@@ -17,39 +17,41 @@ function get_group_id(){
 }
 function set_tcp_port(){
 	local PORT=$1
+        local GROUP_NAME=$2
 	$AWS_CMD authorize-security-group-ingress --group-name $GROUP_NAME --protocol tcp --port $PORT --cidr 0.0.0.0/0 2>&1 >/dev/null
 }
 function create_group(){
+	local GROUP_NAME=$1
 	local id=$($AWS_CMD create-security-group --group-name $GROUP_NAME --description "Security group for Impala2go slave node" 2>/dev/null)
 	echo $id
 }
 function get_or_create_security_group(){
 	local GROUP_NAME=$1
-	local _MASTER=$2
+	local ROLE=$2
 	shift 2
-	if [ -z "$_MASTER" ]
-	then	
-		local REQUIRED_PORTS=$SLAVE_PORTS
-	else
+	if [ "x$ROLE" = "xmaster" ]
+	then
 		local REQUIRED_PORTS=$MASTER_PORTS
+	else
+                local REQUIRED_PORTS=$SLAVE_PORTS
 	fi
 
 	if [ -z $GROUP_NAME -o ! -z "$DRY_RUN" ]; then
 	        echo error
 	fi
 
-	local GROUP_ID=$(get_group_id $GROUP_NAME)
+	local GROUP_ID=$(get_group_id $GROUP_NAME-$ROLE)
 	if [  -z "$GROUP_ID" ]; then
-		GROUP_ID=$(create_group)
+		GROUP_ID=$(create_group $GROUP_NAME-$ROLE)
 	fi
 
-        local ALLOWED_PORTS=$($AWS_CMD describe-security-groups --group-names $GROUP_NAME|grep IPPERMISSIONS|grep tcp|cut -f4)
+        local ALLOWED_PORTS=$($AWS_CMD describe-security-groups --group-names $GROUP_NAME-$ROLE|grep IPPERMISSIONS|grep tcp|cut -f4)
 
 	for port in $REQUIRED_PORTS 
 	do
 		if [ -z "$(echo "$ALLOWED_PORTS" |grep $port)" ];
 		then
-			set_tcp_port $port
+			set_tcp_port $port $GROUP_NAME-$ROLE
 		fi
 	done
 

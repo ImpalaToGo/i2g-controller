@@ -48,11 +48,10 @@ function createInstanceGroup {
 # param 4 - DNS of the master node
 set +x
 COUNT=$1
-#ACCESS_KEY=$2
-#SECRET_KEY=$3
-MASTER_NODE=$3
 NODE_TYPE=$2
-#S3_BUCKET=$3
+shift 2
+MASTER_NODE=$1
+
 if [ -z $NODE_TYPE ];
 then
 	echo usage:
@@ -69,12 +68,7 @@ store_cluster_id $BATCH_ID
 echo $($LOG_PREFIX) Creating security group if required|$LOG_APPEND
 
 . create_impala_security_group.sh
-
-if [ "$NODE_TYPE" = "master" ]; then
-	SECURITY_GROUP_IDS=$(get_or_create_security_group ${SECURITY_GROUP}-MASTER|$LOG_APPEND)
-else
-	SECURITY_GROUP_IDS=$(get_or_create_security_group ${SECURITY_GROUP}-SLAVE|$LOG_APPEND)
-fi
+SECURITY_GROUP_IDS=$(get_or_create_security_group ${SECURITY_GROUP} $NODE_TYPE|$LOG_APPEND)
 
 
 echo $($LOG_PREFIX) Checking if requested AMI: $IMAGE_ID available|$LOG_APPEND
