@@ -8,11 +8,9 @@ read -p "Please enter your default s3 backet" S3_BACKET
 read -p "Is it master ? y/n " IsMaster
 
 if [ "$IsMaster" == "n" ]; then
-read -p "Please enter DNS of Master" MASTER_DNS
-
-
+	read -p "Please enter DNS of Master" MASTER_DNS
 else
-MASTER_DNS=localhost
+	MASTER_DNS=localhost
 fi
 
 #get script path

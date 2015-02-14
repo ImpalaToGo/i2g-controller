@@ -8,41 +8,36 @@ BATCH_ID=$(uuidgen)
 #param $2 instance type
 #param $3 BATCH_ID
 #param $4 Security group IDs
-
-
 function createInstanceGroup {
+	local INSTANCE_COUNT_LOCAL=$1
+	local INSTANCE_TYPE_LOCAL=$2
+	local BATCH_ID_LOCAL=$3
+	local SECURITY_GROUP_IDS_LOCAL=$4
 
-INSTANCE_COUNT_LOCAL=$1
-INSTANCE_TYPE_LOCAL=$2
-BATCH_ID_LOCAL=$3
-SECURITY_GROUP_IDS_LOCAL=$4
+	echo $($LOG_PREFIX) Requesting to start $INSTANCE_COUNT_LOCAL instances of $INSTANCE_TYPE_LOCAL size with AMI: $IMAGE_ID|$LOG_APPEND
 
+	$AWS_CMD run-instances --image-id $IMAGE_ID --count $INSTANCE_COUNT_LOCAL --instance-type $INSTANCE_TYPE_LOCAL --security-group-ids $SECURITY_GROUP_IDS_LOCAL --placement AvailabilityZone=$AVAILABILITY_ZONE --key-name $KEY_NAME --client-token $BATCH_ID_LOCAL --user-data "\'$USER_DATA\'" |$LOG_APPEND
 
-echo $($LOG_PREFIX) Requesting to start $INSTANCE_COUNT_LOCAL instances of $INSTANCE_TYPE_LOCAL size with AMI: $IMAGE_ID|$LOG_APPEND
+	echo $($LOG_PREFIX) Run-instances request sent, waiting for all instances to run|$LOG_APPEND
+	$AWS_CMD wait instance-running --filters Name=client-token,Values=$BATCH_ID_LOCAL|$LOG_APPEND
 
-$AWS_CMD run-instances --image-id $IMAGE_ID --count $INSTANCE_COUNT_LOCAL --instance-type $INSTANCE_TYPE_LOCAL --security-group-ids $SECURITY_GROUP_IDS_LOCAL --placement AvailabilityZone=$AVAILABILITY_ZONE --key-name $KEY_NAME --client-token $BATCH_ID_LOCAL --user-data "\'$USER_DATA\'" |$LOG_APPEND
+	echo $($LOG_PREFIX_LOCAL) All instances running querying instance details |$LOG_APPEND
+	$AWS_CMD describe-instances --filters Name=client-token,Values=$BATCH_ID_LOCAL|$LOG_APPEND >$TEMP_FILE
+	echo $($LOG_PREFIX_LOCAL) Getting DNS names|$LOG_APPEND
+	DNS_NAMES=$(grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f 15|tee ${CLUSTER_HOSTS}|$LOG_APPEND)
 
-echo $($LOG_PREFIX) Run-instances request sent, waiting for all instances to run|$LOG_APPEND
-$AWS_CMD wait instance-running --filters Name=client-token,Values=$BATCH_ID_LOCAL|$LOG_APPEND
+	echo $($LOG_PREFIX_LOCAL) Adding ssh public-keys records to $SSH_KNOWN_HOSTS_FILE|$LOG_APPEND
+	CLUSTER_HOSTS_COUNT=$(cat $CLUSTER_HOSTS|wc -w)
+	#TODO: Add timeout
+	while [ $(cat $SSH_KNOWN_HOSTS_FILE|wc -l) -lt $(expr $CLUSTER_HOSTS_COUNT \* 2) ]; do
+		echo $($LOG_PREFIX) Trying to perform keyscan
+		ssh-keyscan -H -f $CLUSTER_HOSTS  >$SSH_KNOWN_HOSTS_FILE
+		sleep 1
+	done
+	echo $($LOG_PREFIX) Keyscan complete. Added $(cat $SSH_KNOWN_HOSTS_FILE|wc -l) keys for cluster|$LOG_APPEND
 
-echo $($LOG_PREFIX_LOCAL) All instances running querying instance details |$LOG_APPEND
-$AWS_CMD describe-instances --filters Name=client-token,Values=$BATCH_ID_LOCAL|$LOG_APPEND >$TEMP_FILE
-echo $($LOG_PREFIX_LOCAL) Getting DNS names|$LOG_APPEND
-DNS_NAMES=$(grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f 15|tee ${CLUSTER_HOSTS}|$LOG_APPEND)
-
-echo $($LOG_PREFIX_LOCAL) Adding ssh public-keys records to $SSH_KNOWN_HOSTS_FILE|$LOG_APPEND
-CLUSTER_HOSTS_COUNT=$(cat $CLUSTER_HOSTS|wc -w)
-#TODO: Add timeout
-while [ $(cat $SSH_KNOWN_HOSTS_FILE|wc -l) -lt $(expr $CLUSTER_HOSTS_COUNT \* 2) ]; do
-	echo $($LOG_PREFIX) Trying to perform keyscan
-	ssh-keyscan -H -f $CLUSTER_HOSTS  >$SSH_KNOWN_HOSTS_FILE
-        sleep 1
-done
-echo $($LOG_PREFIX) Keyscan complete. Added $(cat $SSH_KNOWN_HOSTS_FILE|wc -l) keys for cluster|$LOG_APPEND
-
-echo $($LOG_PREFIX) Getting instance IDs|$LOG_APPEND
-grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f8|tee ${CLUSTER_VAR_DIR}/instances
-
+	echo $($LOG_PREFIX) Getting instance IDs|$LOG_APPEND
+	grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f8|tee ${CLUSTER_VAR_DIR}/instances
 }
 
 
@@ -92,12 +87,9 @@ then
 	exit 1
 fi
 
-
 createInstanceGroup $COUNT $INSTANCE_TYPE $BATCH_ID $SECURITY_GROUP_IDS
 
-
 if [ "$NODE_TYPE" = "master" ]; then
-     
    ./run_cmd_on_all.sh $BATCH_ID "sudo /home/ec2-user/attachToCluster.sh  $ACCESS_KEY $SECRET_KEY localhost $S3_BUCKET &&  sudo /home/ec2-user/restart_master.sh" |$LOG_APPEND
 else
    ./run_cmd_on_all.sh $BATCH_ID "sudo /home/ec2-user/attachToCluster.sh  $ACCESS_KEY $SECRET_KEY $MASTER_NODE $S3_BUCKET &&  sudo /home/ec2-user/restart_slave.sh" |$LOG_APPEND
