@@ -4,7 +4,8 @@ DEVICES="$(ls /dev/xvd[b-z])"
 RAID_DEVICE=raid0
 MOUNTPOINT=/dbcache
 FSTYPE=ext4
-function unmount_device(){
+function unmount_device()
+{
         local device=$1
         local mounted=$(mount|grep -o $device)
         if [ -b "$device" -a ! -z "$mounted" ];
@@ -13,45 +14,51 @@ function unmount_device(){
         fi
 }
 
-function prepare_mount_point(){
+function prepare_mount_point()
+{
         local mount_point=$1
         local mounted=$(mount|grep -o $mount_point)
         
-        if [ ! -z "$mounted" ];
+        if [ ! -z "$mounted" ]
         then
                 echo error: $mount_point already mounted
                 exit 1
         fi
 
-        if [ ! -d "$mount_point" ];
-        then
-                mkdir -p $mount_point
-        fi
-	chmod 777 $mount_point
+	if [ -h "$mount_point" ]
+	then
+		rm $mount_point
+	elif [ -d "$mount_point" ]
+	then
+		rm -rf $mount_point
+	fi
+        mkdir -p $mount_point
+        chmod 777 $mount_point
+        chown impala $mount_point
 }
 
 function format_device()
 {
-	local device=$1
-	mkfs.$FSTYPE -c $device
+        local device=$1
+        mkfs.$FSTYPE -c $device
 }
 
 function create_array()
 {
-	local COUNT=$(echo $DEVICES|wc -w)
-	yes|mdadm --create --level=0 -n $COUNT $RAID_DEVICE $DEVICES
+        local COUNT=$(echo $DEVICES|wc -w)
+        yes|mdadm --create --level=0 -n $COUNT $RAID_DEVICE $DEVICES
 
 }
 mount -a
 raid_mounted=$(mount|grep -o $RAID_DEVICE)
 if [ ! -z "$raid_mounted" ]
 then
-	exit 0
+        exit 0
 fi
 
 for device in $DEVICES
 do
-	unmount_device $device
+        unmount_device $device
 done
 
 #prepare mount point before any mount operation, 
@@ -62,23 +69,23 @@ prepare_mount_point $MOUNTPOINT
 NUMBER_ATTACHED_DEVICES=$(ls $DEVICES 2>/dev/null|wc -w)
 if [ $NUMBER_ATTACHED_DEVICES -gt 1 ];
 then
-	#Create raid if more than one device attached
-	create_array
-	#TODO: Fix this to be generic. i.e. support more than one raid device (WHY ?)
-	DEVICE_PATH=$(ls /dev/md/md*|head -1)
+        #Create raid if more than one device attached
+        create_array
+        #TODO: Fix this to be generic. i.e. support more than one raid device (WHY ?)
+        DEVICE_PATH=/dev/md127
 else
-	#There is at most one device in the list, 
-	#discover which one and use it for mounting
-	DEVICE_PATH=$(ls $DEVICES 2>/dev/null)
+        #There is at most one device in the list, 
+        DEVICE_PATH=$DEVICES
 fi
 
-if [ ! -z "$DEVICE_PATH" ];
+if [ -b "$DEVICE_PATH" ];
 then
-	format_device $DEVICE_PATH
-	mount -t auto $DEVICE_PATH $MOUNTPOINT
-	#Create a record in FSTAB and delete obsolete ephemeral records
-	sed -i s/".*ephemeral.*"/""/ /etc/fstab 
-	echo "$DEVICE_PATH $MOUNTPOINT $FSTYPE defaults 0 0"|tee -a /etc/fstab
+        format_device $DEVICE_PATH
+        mount -t auto $DEVICE_PATH $MOUNTPOINT
+        #Create a record in FSTAB and delete obsolete ephemeral records
+        sed -i s#".*ephemeral.*"#""# s#".*dbcache.*"#""# s#".*$MOUNTPOINT.*"#""# /etc/fstab
+	echo $DEVICE_PATH $MOUNTPOINT $FSTYPE defaults 0 0 >>/etc/fstab
+        cat /etc/fstab
 fi
 
 ls $MOUNTPOINT

@@ -3,7 +3,7 @@
 BATCH_ID=$(uuidgen)
 #BATCH_ID=ce5bdd53-a6fb-426f-95be-3490bc785499
 . resize.config
-
+. communication.functions
 #param $1 instance count
 #param $2 instance type
 #param $3 BATCH_ID
@@ -88,13 +88,17 @@ then
 fi
 
 createInstanceGroup $COUNT $INSTANCE_TYPE $BATCH_ID $SECURITY_GROUP_IDS
-
+#set -x
+echo $($LOG_PREFIX) Creating RAID on instances|$LOG_APPEND
+copy_to_all create_raid /tmp
+run_cmd_on_all "sudo cp /tmp/create_raid /etc/init.d/ && sudo ln -s /etc/init.d/create_raid /etc/rc3.d/S15create_raid && sudo ln -s /etc/init.d/create_raid /etc/rc2.d/S15create_raid && sudo /etc/init.d/create_raid"|$LOG_APPEND
+run_cmd_on_all "sudo /etc/init.d/create_raid"|$LOG_APPEND
+echo $($LOG_PREFIX) Starting $BASE_NAME Cluster|$LOG_APPEND
 if [ "$NODE_TYPE" = "master" ]; then
-   ./run_cmd_on_all.sh $BATCH_ID "sudo /home/ec2-user/attachToCluster.sh  $ACCESS_KEY $SECRET_KEY localhost $S3_BUCKET &&  sudo /home/ec2-user/restart_master.sh" |$LOG_APPEND
+	run_cmd_on_all "sudo /home/ec2-user/attachToCluster.sh  $ACCESS_KEY $SECRET_KEY localhost $S3_BUCKET &&  sudo /home/ec2-user/restart_master.sh" |$LOG_APPEND
 else
-   ./run_cmd_on_all.sh $BATCH_ID "sudo /home/ec2-user/attachToCluster.sh  $ACCESS_KEY $SECRET_KEY $MASTER_NODE $S3_BUCKET &&  sudo /home/ec2-user/restart_slave.sh" |$LOG_APPEND
+	run_cmd_on_all "sudo /home/ec2-user/attachToCluster.sh  $ACCESS_KEY $SECRET_KEY $MASTER_NODE $S3_BUCKET &&  sudo /home/ec2-user/restart_slave.sh" |$LOG_APPEND
 fi
-
 
 rm -f $TEMP_FILE
 #echo $($LOG_PREFIX) All cluster nodes got configuration command. See master node $MASTER_NODE for details|$LOG_APPEND
