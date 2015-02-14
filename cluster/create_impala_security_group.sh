@@ -3,6 +3,12 @@ if [ -z "$AWS_CMD" ];
 then
 	AWS_CMD="aws ec2"
 fi
+if [ -z "$MASTER_PORTS" ]
+then
+	MASTER_PORTS="80 22 22000 23000 25000 25010 25020 24000 28000 15002 26000 15000 15001"
+	SLAVE_PORTS="22 21050 22000 21000 25000"
+
+fi
 #TODO: Redirect stderr to log
 function get_group_id(){
 	local group_name=$1
@@ -19,18 +25,15 @@ function create_group(){
 }
 function get_or_create_security_group(){
 	local GROUP_NAME=$1
-        
 	local _MASTER=$2
+	shift 2
 	if [ -z "$_MASTER" ]
 	then	
-        	local REQUIRED_PORTS=$MASTER_PORTS
+		local REQUIRED_PORTS=$SLAVE_PORTS
 	else
-        	local REQUIRED_PORTS=$SLAVE_PORTS
+		local REQUIRED_PORTS=$MASTER_PORTS
 	fi
 
-#	echo get_or_create_security_group called for group name$GROUP_NAME=   and ports $REQUIRED_PORTS
-
-	shift
 	if [ -z $GROUP_NAME -o ! -z "$DRY_RUN" ]; then
 	        echo error
 	fi
@@ -42,12 +45,14 @@ function get_or_create_security_group(){
 
         local ALLOWED_PORTS=$($AWS_CMD describe-security-groups --group-names $GROUP_NAME|grep IPPERMISSIONS|grep tcp|cut -f4)
 
-	for port in $REQUIRED_PORTS; do
+	for port in $REQUIRED_PORTS 
+	do
 		if [ -z "$(echo "$ALLOWED_PORTS" |grep $port)" ];
 		then
 			set_tcp_port $port
 		fi
 	done
+
 	if [ -z "$(echo $GROUP_ID|grep -oe "sg-[[:alnum:]]*")" ];
 	then 
 		GROUP_ID=error
@@ -57,6 +62,7 @@ function get_or_create_security_group(){
 
 case $1	in
 	run )
-		echo Group id: $(get_or_create_security_group $2)
+		echo Group id for master: $(get_or_create_security_group $2-master master)
+		echo Group id for slave: $(get_or_create_security_group $2-slave)
 	;;
 esac

@@ -73,15 +73,12 @@ echo $($LOG_PREFIX) Trying to start cluster $BATCH_ID|$LOG_APPEND
 store_cluster_id $BATCH_ID
 echo $($LOG_PREFIX) Creating security group if required|$LOG_APPEND
 
-IMPALA_MASTER_PORTS="80 22 22000 23000 25000 25010 25020 24000 28000 15002 26000 15000 15001"
-IMPALA_SLAVE_PORTS="21050 22000 21000 25000"
-
 . create_impala_security_group.sh
 
 if [ "$NODE_TYPE" = "master" ]; then
-SECURITY_GROUP_IDS=$(get_or_create_security_group ${SECURITY_GROUP_MASTER} ${IMPALA_MASTER_PORTS}|$LOG_APPEND)
+	SECURITY_GROUP_IDS=$(get_or_create_security_group ${SECURITY_GROUP}-MASTER|$LOG_APPEND)
 else
-SECURITY_GROUP_IDS=$(get_or_create_security_group ${SECURITY_GROUP_SLAVE} ${IMPALA_SLAVE_PORTS} |$LOG_APPEND)
+	SECURITY_GROUP_IDS=$(get_or_create_security_group ${SECURITY_GROUP}-SLAVE|$LOG_APPEND)
 fi
 
 
