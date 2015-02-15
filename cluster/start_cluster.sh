@@ -72,6 +72,8 @@ then
 	echo "$0 <COUNT> <NODE TYPE> <MASTER URL>"
 	exit 2
 fi
+
+chmod 600 $PRIVATE_KEY
 #TODO: Create profile with keys
 #TODO: Fixup logging
 #BATCH_ID=$(uuidgen)
