@@ -8,6 +8,8 @@ BATCH_ID=$(uuidgen)
 #param $2 instance type
 #param $3 BATCH_ID
 #param $4 Security group IDs
+
+
 function createInstanceGroup {
 	local INSTANCE_COUNT_LOCAL=$1
 	local INSTANCE_TYPE_LOCAL=$2
@@ -25,6 +27,18 @@ function createInstanceGroup {
 	$AWS_CMD describe-instances --filters Name=client-token,Values=$BATCH_ID_LOCAL|$LOG_APPEND >$TEMP_FILE
 	echo $($LOG_PREFIX_LOCAL) Getting DNS names|$LOG_APPEND
 	DNS_NAMES=$(grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f 15|tee ${CLUSTER_HOSTS}|$LOG_APPEND)
+
+        while grep -q -v '^[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}$' $CLUSTER_HOSTS
+        do
+                echo waiting for instances to be ready
+                sleep 4
+	        rm -f $CLUSTER_HOSTS
+	        rm -f $TEMP_FILE
+                $AWS_CMD describe-instances --filters Name=client-token,Values=$BATCH_ID_LOCAL|$LOG_APPEND >$TEMP_FILE
+                DNS_NAMES=$(grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f 15|tee ${CLUSTER_HOSTS}|$LOG_APPEND)
+        done
+
+
 
 	echo $($LOG_PREFIX_LOCAL) Adding ssh public-keys records to $SSH_KNOWN_HOSTS_FILE|$LOG_APPEND
 	CLUSTER_HOSTS_COUNT=$(cat $CLUSTER_HOSTS|wc -w)
