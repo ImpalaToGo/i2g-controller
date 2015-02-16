@@ -1,8 +1,8 @@
 echo "Configuring ImpalaToGo"
 
-read -p "Please enter your access key " ACCESS_KEY
-read -p "Please enter your secret key " SECRET_KEY
-read -p "Please enter your default s3 backet " S3_BUCKET
+read -p "Please enter aws access key: " ACCESS_KEY
+read -p "Please enter aws secret key: " SECRET_KEY
+read -p "Please enter default s3 backet: " S3_BUCKET
 . instance_key.config
 read -p "please enter you key file name (Configured: $PRIVATE_KEY): " KEY_FILE_NAME_INPUT
 if [ ! -z "$KEY_FILE_NAME_INPUT" ]
