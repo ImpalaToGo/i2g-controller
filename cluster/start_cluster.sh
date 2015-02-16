@@ -54,7 +54,6 @@ function createInstanceGroup {
 	grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f8|tee ${CLUSTER_VAR_DIR}/instances
 }
 
-
 # script parameters are
 # param 1 - number of servers to add.
 # param 2 - access key 
@@ -73,10 +72,8 @@ then
 	exit 2
 fi
 
-chmod 600 $PRIVATE_KEY
 #TODO: Create profile with keys
 #TODO: Fixup logging
-#BATCH_ID=$(uuidgen)
 
 take_lock
 echo $($LOG_PREFIX) Trying to start cluster $BATCH_ID|$LOG_APPEND
