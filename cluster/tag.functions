@@ -1,0 +1,37 @@
+
+function tag_masters()
+{
+	for master_node in $(cat $CLUSTER_HOSTS)
+	do
+		echo $($LOG_PREFIX) Creating tag for master|$LOG_APPEND
+		#TODO: This will ocasionally work for one master in batch. 
+		#If creating more than one than here be BUG - all masters will be tagged in a same way
+		local instances=$(cat $CLUSTER_INSTANCES|tr [:space:] " ")
+		echo $($LOG_PREFIX) Master instances: $instances|$LOG_APPEND
+		local tag_param="--tags Key=$BASE_NAME-role,Value=master Key=ClusterID,Value=$BATCH_ID Key=MasterNode,Value=$master_node"
+		local resources_param="--resources $instances"
+		$AWS_CMD create-tags $tag_param $resources_param|$LOG_APPEND
+		echo $($LOG_PREFIX) create-tags invocation complete|$LOG_APPEND
+	done
+}
+
+function get_cluster_id_by_master()
+{
+	local master_node=$1
+	echo $($LOG_PREFIX) Getting ClusterID from master| >&2 $LOG_APPEND
+	local master_instance=$($AWS_CMD describe-tags --filters Name=key,Values=$BASE_NAME-role Name=value,Values=master Name=key,Values=MasterNode Name=value,Values=$master_node|$LOG_APPEND|cut -f3)
+	$AWS_CMD describe-instances --filter Name=instance-id,Values=$master_instance|$LOG_APPEND|grep ClusterID|cut -f3
+}
+
+function tag_slaves()
+{
+	local master_node=$1
+	echo $($LOG_PREFIX) Creating tag for slaves|$LOG_APPEND
+	local instances=$(cat $CLUSTER_INSTANCES|tr [:space:] " ")
+	#TODO: Discover valid ClusterID from master
+	local tag_param="--tags Key=$BASE_NAME-role,Value=slave Key=ClusterID,Value=PLACE_HOLDER Key=MasterNode,Value=$master_node"
+	local resources_param="--resources $instances"
+	echo $($LOG_PREFIX) create-tag $tag_param $resources_param|>&2 $LOG_APPEND
+	$AWS_CMD create-tags $tag_param $resources_param
+	echo $($LOG_PREFIX) create-tags invocation complete|$LOG_APPEND
+}

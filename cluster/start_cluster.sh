@@ -4,6 +4,7 @@ BATCH_ID=$(uuidgen)
 #BATCH_ID=ce5bdd53-a6fb-426f-95be-3490bc785499
 . resize.config
 . communication.functions
+. tag.functions
 #param $1 instance count
 #param $2 instance type
 #param $3 BATCH_ID
@@ -51,7 +52,7 @@ function createInstanceGroup {
 	echo $($LOG_PREFIX) Keyscan complete. Added $(cat $SSH_KNOWN_HOSTS_FILE|wc -l) keys for cluster|$LOG_APPEND
 
 	echo $($LOG_PREFIX) Getting instance IDs|$LOG_APPEND
-	grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f8|tee ${CLUSTER_VAR_DIR}/instances
+	grep $BATCH_ID_LOCAL <${TEMP_FILE}|cut -f8|tee ${CLUSTER_INSTANCES}
 }
 
 # script parameters are
@@ -94,7 +95,13 @@ then
 	exit 1
 fi
 
-createInstanceGroup $COUNT $INSTANCE_TYPE $BATCH_ID $SECURITY_GROUP_IDS
+createInstanceGroup "$COUNT" "$INSTANCE_TYPE" "$BATCH_ID" "$SECURITY_GROUP_IDS"
+if [ "$NODE_TYPE" = "master" ]
+then
+	tag_masters
+else
+	tag_slaves $MASTER_NODE
+fi
 #set -x
 echo $($LOG_PREFIX) Creating RAID on instances|$LOG_APPEND
 copy_to_all create_raid /tmp
