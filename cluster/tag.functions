@@ -19,8 +19,8 @@ function get_cluster_id_by_master()
 {
 	local master_node=$1
 	echo $($LOG_PREFIX) Getting ClusterID from master| >&2 $LOG_APPEND
-	local master_instance=$($AWS_CMD describe-tags --filters Name=key,Values=$BASE_NAME-role Name=value,Values=master Name=key,Values=MasterNode Name=value,Values=$master_node|$LOG_APPEND|cut -f3)
-	$AWS_CMD describe-instances --filter Name=instance-id,Values=$master_instance|$LOG_APPEND|grep ClusterID|cut -f3
+	local instances=$($AWS_CMD describe-tags --filters Name=key,Values=MasterNode Name=value,Values=$master_node|$LOG_APPEND|cut -f3)
+	$AWS_CMD describe-instances --instance-ids $instances --filters Name=tag-value,Values=master|$LOG_APPEND|grep ClusterID|cut -f3
 }
 
 function tag_slaves()
@@ -28,10 +28,10 @@ function tag_slaves()
 	local master_node=$1
 	echo $($LOG_PREFIX) Creating tag for slaves|$LOG_APPEND
 	local instances=$(cat $CLUSTER_INSTANCES|tr [:space:] " ")
-	#TODO: Discover valid ClusterID from master
-	local tag_param="--tags Key=$BASE_NAME-role,Value=slave Key=ClusterID,Value=PLACE_HOLDER Key=MasterNode,Value=$master_node"
+	local ClusterID=$(get_cluster_id_by_master $master_node)
+	local tag_param="--tags Key=$BASE_NAME-role,Value=slave Key=ClusterID,Value=$ClusterID Key=MasterNode,Value=$master_node"
 	local resources_param="--resources $instances"
-	echo $($LOG_PREFIX) create-tag $tag_param $resources_param|>&2 $LOG_APPEND
+	echo $($LOG_PREFIX) create-tag $tag_param $resources_param|$LOG_APPEND
 	$AWS_CMD create-tags $tag_param $resources_param
 	echo $($LOG_PREFIX) create-tags invocation complete|$LOG_APPEND
 }
