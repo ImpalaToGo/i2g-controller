@@ -1,10 +1,18 @@
-echo "Configuring ImpalaToGo"
+#!/bin/bash
+echo Starting Impala2go configuration.
+echo -n Creating required folders. This may ask your sudo password.
+sudo ./init_required_folders.sh
+echo "- Done"
+. s3.config
+read -p "Please enter aws access key (Configured: $ACCESS_KEY): " ACCESS_KEY_INPUT
+read -p "Please enter aws secret key (Configured: *****${SECRET_KEY:(-6)}): " SECRET_KEY_INPUT
+read -p "Please enter default s3 bucket (Configured: $S3_BUCKET): " S3_BUCKET_INPUT
+[[ ! -z "$ACCESS_KEY_INPUT" ]] && ACCESS_KEY=$ACCESS_KEY_INPUT
+[[ ! -z "$SECRET_KEY_INPUT" ]] && SECRET_KEY=$SECRET_KEY_INPUT
+[[ ! -z "$S3_BUCKET_INPUT" ]] && S3_BUCKET=$S3_BUCKET_INPUT
 
-read -p "Please enter aws access key: " ACCESS_KEY
-read -p "Please enter aws secret key: " SECRET_KEY
-read -p "Please enter default s3 backet: " S3_BUCKET
 . instance_key.config
-read -p "please enter you key file name (Configured: $PRIVATE_KEY): " KEY_FILE_NAME_INPUT
+read -p "Please enter you key file name (Configured: $PRIVATE_KEY): " KEY_FILE_NAME_INPUT
 if [ ! -z "$KEY_FILE_NAME_INPUT" ]
 then
 	eval PRIVATE_KEY=$KEY_FILE_NAME_INPUT
