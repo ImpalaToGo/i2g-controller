@@ -140,9 +140,6 @@
         "Comment2" : "create /etc/impala/core-site.xml /etc/impala/conf/hdfs-site.xml /etc/impala/conf/hive-site.xml and /etc/default/impala",
 
         "AWS::CloudFormation::Init" : {
-          "configSets" : {
-            "Install" : [ "Install" ]
-          },
           "config": {
 	    "files" : {
 	      "/etc/impala/core-site.xml" : {
