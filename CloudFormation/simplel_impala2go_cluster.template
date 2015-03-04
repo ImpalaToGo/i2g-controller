@@ -396,9 +396,14 @@ In the following example, sections marked with an ellipsis (...) are omitted for
   },
 
   "Outputs" : {
-    "Instance" : {
-      "Value" : { "Fn::GetAtt" : [ "I2gMaster", "PublicDnsName" ] }, 
-      "Description" : "DNS Name of the newly created Impala2go cluster. You should use it to build JDBC connection string."
+    "JDBC" : {
+      "Value" : {"Fn::Join" : ["", [ "jdbc:impala://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },":21050"] ] },
+      "Description" : "JDBC Connection String for Impala2go Cluster"
+    },
+    "ClusterStatus" : {
+      "Value" : {"Fn::Join" : ["", [ "http://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },":25000"] ] },
+      "Description" : "ImpalaToGo Cluster status page"
     }
   }
+
 }
