@@ -11,9 +11,7 @@
     },
     "ClusterID" : {
       "Description" : "Identificator of Impala2go cluster",
-      "Type" : "String",
-      "Default" : "small",
-      "ConstraintDescription" : "Should be one of small, medium or large"
+      "Type" : "String"
     },
     "I2gInstanceType" : {
       "Description" : "ImpalaToGo instance type",
@@ -21,6 +19,18 @@
       "Default" : "small",
       "AllowedValues" : [ "small","medium","large"],
       "ConstraintDescription" : "Should be one of small, medium or large"
+    },
+    "S3Bucket" : {
+      "Description" : "URL to S3 bucket with data",
+      "Type" : "String"
+    },
+    "S3AccessKey" : {
+      "Description" : "AWS access key with permissions to access S3 bucket above",
+      "Type" : "String"
+    },
+    "S3SecretKey" : {
+      "Description" : "AWS secret key for the access key above",
+      "Type" : "String"
     }
   },
 
@@ -109,7 +119,7 @@
 	    "Key" : "i2g-ClusterID",
 	    "Value" : { "Ref" : "ClusterID" }
 	} ],
-	"UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+	"UserData": { "Fn::Base64" : { "Fn::Join" : ["", [
              "yum update -y aws-cfn-bootstrap\n",
 
              "# Install the files and packages from the metadata\n",
@@ -117,247 +127,229 @@
              "         --stack ", { "Ref" : "AWS::StackName" },
              "         --resource I2gMaster ",
              "         --configsets InstallAndRun ",
-             "         --region ", { "Ref" : "AWS::Region" }, "\n"
-		]]}}
-      },
-          What is AWS CloudFormation?
-    Getting Started
-    Best Practices
-    Controlling Access with IAM
-    Working with Stacks
-    Working With Templates
-        Template Anatomy
-        Example Templates
-        Template Snippets
-        Creating Templates
-            Specifying Intrinsic Functions
-            Adding Input Parameters
-            Use Parameters and Mappings to Specify Values in Your Template
-            Conditionally Creating Resources
-            Tagging Your Resources
-            Specifying Output Values
-            Creating Wait Conditions
-            Deploying Applications
-        Using Regular Expressions
-    Template Reference
-    Sample Templates
-    AWS CloudFormation Limits
-    Custom Resource Reference
-    Logging API Calls
-    Troubleshooting
-    Release History
-    AWS Glossary
-
-View the PDF for this guide.Go to the AWS Discussion Forum for this product.Go to the Kindle Store to download this guide in Kindle format.
-Deploying Applications on Amazon EC2 with AWS CloudFormation
-
-You can use AWS CloudFormation to automatically install, configure, and start applications on Amazon EC2 instances. Doing so enables you to easily duplicate deployments and update existing installations without connecting directly to the instance, which can save you a lot of time and effort.
-
-AWS CloudFormation includes a set of helper scripts (cfn-init, cfn-signal, cfn-get-metadata, and cfn-hup) that are based on cloud-init. You call these helper scripts from your AWS CloudFormation templates to install, configure, and update applications on Amazon EC2 instances that are in the same template.
-
-The following walkthrough describes how to create a template that launches a LAMP stack by using cfn helper scripts to install, configure and start Apache, MySQL, and PHP. You'll start with a simple template that sets up a basic Amazon EC2 instance running Amazon Linux, and then continue adding to the template until it describes a full LAMP stack.
-
-For additional strategies and examples about deploying applications with AWS CloudFormation, see the Bootstrapping Applications via AWS CloudFormation article.
-
-Topics
-
-    Basic Amazon EC2 Instance
-    LAMP Installation
-    LAMP Configuration
-    CreationPolicy Attribute
-
-Basic Amazon EC2 Instance
-
-You start with a basic template that defines a single Amazon EC2 instance with a security group that allows SSH traffic on port 22 and HTTP traffic on port 80, as shown in the following example:
-
-{
-  "AWSTemplateFormatVersion" : "2010-09-09",
-
-  "Description" : "AWS CloudFormation sample template LAMP_Single_Instance: Create a LAMP stack using a single EC2
-instance and a local MySQL database for storage. This template demonstrates using the AWS CloudFormation bootstrap
-scripts to install the packages and files necessary to deploy the Apache web server, PHP, and MySQL at instance launch time.
-**WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
-
-  "Parameters" : {
-    "KeyName": {
-      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
-      "Type": "AWS::EC2::KeyPair::KeyName",
-      "ConstraintDescription" : "Can contain only ASCII characters."
-    },  
-    "InstanceType" : {
-      "Description" : "WebServer EC2 instance type",
-      "Type" : "String",
-      "Default" : "m1.small",
-      "AllowedValues" : [ "t1.micro", "t2.micro", "t2.small", "t2.medium", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge", "c1.medium", "c1.xlarge", "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge", "g2.2xlarge", "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge", "i2.xlarge", "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "hi1.4xlarge", "hs1.8xlarge", "cr1.8xlarge", "cc2.8xlarge", "cg1.4xlarge"],
-      "ConstraintDescription" : "Must be a valid EC2 instance type"
-    },
-    "SSHLocation" : {
-      "Description" : "The IP address range that can be used to SSH to the EC2 instances",
-      "Type": "String",
-      "MinLength": "9",
-      "MaxLength": "18",
-      "Default": "0.0.0.0/0",
-      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
-      "ConstraintDescription": "Must be a valid IP CIDR range of the form x.x.x.x/x"
-    } 
-  },
-
-  "Mappings" : {
-    "AWSInstanceType2Arch" : {
-      "t1.micro"    : { "Arch" : "PV64"   },
-      "t2.micro"    : { "Arch" : "HVM64"  },
-      "t2.small"    : { "Arch" : "HVM64"  },
-      "t2.medium"   : { "Arch" : "HVM64"  },
-      "m1.small"    : { "Arch" : "PV64"   },
-      "m1.medium"   : { "Arch" : "PV64"   },
-      "m1.large"    : { "Arch" : "PV64"   },
-      "m1.xlarge"   : { "Arch" : "PV64"   },
-      "m2.xlarge"   : { "Arch" : "PV64"   },
-      "m2.2xlarge"  : { "Arch" : "PV64"   },
-      "m2.4xlarge"  : { "Arch" : "PV64"   },
-      "m3.medium"   : { "Arch" : "HVM64"  },
-      "m3.large"    : { "Arch" : "HVM64"  },
-      "m3.xlarge"   : { "Arch" : "HVM64"  },
-      "m3.2xlarge"  : { "Arch" : "HVM64"  },
-      "c1.medium"   : { "Arch" : "PV64"   },
-      "c1.xlarge"   : { "Arch" : "PV64"   },
-      "c3.large"    : { "Arch" : "HVM64"  },
-      "c3.xlarge"   : { "Arch" : "HVM64"  },
-      "c3.2xlarge"  : { "Arch" : "HVM64"  },
-      "c3.4xlarge"  : { "Arch" : "HVM64"  },
-      "c3.8xlarge"  : { "Arch" : "HVM64"  },
-      "g2.2xlarge"  : { "Arch" : "HVMG2"  },
-      "r3.large"    : { "Arch" : "HVM64"  },
-      "r3.xlarge"   : { "Arch" : "HVM64"  },
-      "r3.2xlarge"  : { "Arch" : "HVM64"  },
-      "r3.4xlarge"  : { "Arch" : "HVM64"  },
-      "r3.8xlarge"  : { "Arch" : "HVM64"  },
-      "i2.xlarge"   : { "Arch" : "HVM64"  },
-      "i2.2xlarge"  : { "Arch" : "HVM64"  },
-      "i2.4xlarge"  : { "Arch" : "HVM64"  },
-      "i2.8xlarge"  : { "Arch" : "HVM64"  },
-      "hi1.4xlarge" : { "Arch" : "HVM64"  },
-      "hs1.8xlarge" : { "Arch" : "HVM64"  },
-      "cr1.8xlarge" : { "Arch" : "HVM64"  },
-      "cc2.8xlarge" : { "Arch" : "HVM64"  }
-    },
-
-    "AWSRegionArch2AMI" : {
-      "us-east-1"      : { "PV64" : "ami-50842d38", "HVM64" : "ami-08842d60", "HVMG2" : "ami-3a329952"  },
-      "us-west-2"      : { "PV64" : "ami-af86c69f", "HVM64" : "ami-8786c6b7", "HVMG2" : "ami-47296a77"  },
-      "us-west-1"      : { "PV64" : "ami-c7a8a182", "HVM64" : "ami-cfa8a18a", "HVMG2" : "ami-331b1376"  },
-      "eu-west-1"      : { "PV64" : "ami-aa8f28dd", "HVM64" : "ami-748e2903", "HVMG2" : "ami-00913777"  },
-      "ap-southeast-1" : { "PV64" : "ami-20e1c572", "HVM64" : "ami-d6e1c584", "HVMG2" : "ami-fabe9aa8"  },
-      "ap-northeast-1" : { "PV64" : "ami-21072820", "HVM64" : "ami-35072834", "HVMG2" : "ami-5dd1ff5c"  },
-      "ap-southeast-2" : { "PV64" : "ami-8b4724b1", "HVM64" : "ami-fd4724c7", "HVMG2" : "ami-e98ae9d3"  },
-      "sa-east-1"      : { "PV64" : "ami-9d6cc680", "HVM64" : "ami-956cc688", "HVMG2" : "NOT_SUPPORTED" },
-      "cn-north-1"     : { "PV64" : "ami-a857c591", "HVM64" : "ami-ac57c595", "HVMG2" : "NOT_SUPPORTED" },
-      "eu-central-1"   : { "PV64" : "ami-a03503bd", "HVM64" : "ami-b43503a9", "HVMG2" : "ami-b03503ad"  }
-    }
-  },
-
-  "Resources" : {
-
-    "WebServerInstance": {
-      "Type": "AWS::EC2::Instance",
-      "Properties": {
-        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
-                          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
-        "InstanceType"   : { "Ref" : "InstanceType" },
-        "SecurityGroups" : [ {"Ref" : "WebServerSecurityGroup"} ],
-        "KeyName"        : { "Ref" : "KeyName" }
-      }
-    },
-    "WebServerSecurityGroup" : {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-        "GroupDescription" : "Enable HTTP access via port 80",
-        "SecurityGroupIngress" : [
-          {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"},
-          {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation"}}
-        ]
-      }
-    }
-  },
-
-  "Outputs" : {
-    "WebsiteURL" : {
-      "Description" : "URL for newly created LAMP stack",
-      "Value" : { "Fn::Join" : ["", ["http://", { "Fn::GetAtt" : [ "WebServerInstance", "PublicDnsName" ]}]] }
-    }
-  }
-}
-
-In addition to the Amazon EC2 instance and security group, we create three input parameters that specify the instance type, an Amazon EC2 key pair to use for SSH access, and an IP address range that can be used to SSH to the instance. The mapping section ensures that AWS CloudFormation uses the correct AMI ID for the stack's region and the Amazon EC2 instance type. Finally, the output section outputs the public URL of the web server.
-LAMP Installation
-
-You'll build on the previous basic Amazon EC2 template to automatically install Apache, MySQL, and PHP. To install the applications, you'll add a UserData property and Metadata property. However, the template won't configure and start the applications until the next section.
-
-In the following example, sections marked with an ellipsis (...) are omitted for brevity. Additions to the template are shown in red italic text.
-
-{
-  "AWSTemplateFormatVersion" : "2010-09-09",
-
-  "Description" : "AWS CloudFormation Sample Template LAMP_Install_Only: ...",
-
-  "Parameters" : {
-
-    "KeyName" : { ... },
-
-    "InstanceType" : { ...  },
-
-  "Mappings" : { ... },
-
-  "Resources" : {
-    "WebServerInstance": {
-      "Type": "AWS::EC2::Instance",
-      "Metadata" : {
-        "Comment1" : "Start Impala-related services",
-        "Comment2" : "Configuration should be added later",
-
-	"AWS::CloudFormation::Init" : {
-	  "configSets" : {
-	    "Install" : [ "Install" ]
-	  },        
-	  "services" : {
-	    "sysvinit" : {  
-	      "hive-metastore"   : { "enabled" : "true", "ensureRunning" : "true" },
-	      "impala-state-store"   : { "enabled" : "true", "ensureRunning" : "true" },
-	      "impala-catalog"   : { "enabled" : "true", "ensureRunning" : "true" },
-	      "impala-server"   : { "enabled" : "true", "ensureRunning" : "true" }
-	    }
-	  }
-	}
-    },
-    "I2gSlave" : {
-      "Type" : "AWS::EC2::Instance", 
-      "Properties" : {
-	"KeyName" : { "Ref" : "KeyName" },
-	"InstanceType" : { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] },
-	"ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
-			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] }, "Arch" ] } ] },
-	"SecurityGroups" : [{ "Ref" : "I2GSecurityGroupSlave" }],
-	"BlockDeviceMappings" : [
-	  {
-	    "DeviceName"  : "/dev/sdb",
-	    "VirtualName" : "ephemeral0"
-	  },
-	  {
-	    "DeviceName"  : "/dev/sdc",
-	    "VirtualName" : "ephemeral1"
-	  }
-	],
-	"Tags" : [ 
-	{
-	    "Key" : "i2g-role",
-	    "Value" : "master"
+             "         --region ", { "Ref" : "AWS::Region" }, "\n",
+             "ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
+             "ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n"
+		]]}
+		}
 	},
-	{
-	    "Key" : "i2g-ClusterID",
-	    "Value" : { "Ref" : "ClusterID" }
-	} ]
-    }
-    },
+	"Metadata" : {
+        "Comment1" : "Configure the bootstrap helpers to install the Apache Web Server and PHP",
+        "Comment2" : "Save website content to /var/www/html/index.php",
+
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "Install" : [ "Install" ]
+          },
+	"files" : {
+	  "/etc/impala/core-site.xml" : {
+	    "content" : { "Fn::Join" : [ "", [
+	    "<?xml version=\"1.0\"?>",
+	    "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
+	    "<configuration>",
+	    "<property>",
+	    "<name>fs.defaultFS</name>",
+	    "<value>",
+	    {"Ref" : "S3Bucket"},
+	    "</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>fs.default.name</name>",
+	    "<value>",
+	    {"Ref" : "S3Bucket"},
+	    "</value>",
+	    "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+	    "</property>",
+	    "<property>",
+	    "<name>fs.s3n.awsAccessKeyId</name>",
+	    "<value>",
+	    {"Ref" : "S3AccessKey"},
+	    "</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>fs.s3n.awsSecretAccessKey</name>",
+	    "<value>",
+	    {"Ref" : "S3SecretKey"},
+	    "</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>dfs.client.use.legacy.blockreader.local</name>",
+	    "<value>false</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>dfs.datanode.data.dir.perm</name>",
+	    "<value>750</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>dfs.block.local-path-access.user</name>",
+	    "<value>impala</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>dfs.client.read.shortcircuit</name>",
+	    "<value>false</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>dfs.domain.socket.path</name>",
+	    "<value>/var/run/hdfs-sockets/dn</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>dfs.client.file-block-storage-locations.timeout.millis</name>",
+	    "<value>10000</value>",
+	    "</property>",
+	    "<property>",
+	    "<name>dfs.namenode.name.dir</name>",
+	    "<value>file:///var/lib/hadoop-hdfs/cache/hdfs/dfs/name</value>",
+	    "</property>",
+	    "</configuration>"
+	    ] ]
+	  },
+	  "mode"  : "000666",
+	  "owner" : "ec2-user",
+	  "group" : "ec2-user"
+	  },
+	  "/etc/impala/conf/hdfs-site.xml" : {
+	    "content" : { "Fn::Join" : [ "", [
+	    "<?xml version=\"1.0\"?>",
+"<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
+"<configuration>",
+"<property>",
+"<name>fs.defaultFS</name>",
+"<value>",
+	    {"Ref" : "S3Bucket"},
+	    "</value> </property>",
+"<property>",
+"<name>dfs.permissions</name>",
+"<value>false</value>",
+"</property>",
+"<property>",
+"<name>fs.default.name</name>",
+"<value>",
+	    {"Ref" : "S3Bucket"},
+	    "</value>",
+"<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+"</property>",
+"<property>",
+"<name>fs.s3n.awsAccessKeyId</name>",
+"<value>",
+	    {"Ref" : "S3AccessKey"},
+	    "</value>",
+"</property>",
+"<property>",
+"<name>fs.s3n.awsSecretAccessKey</name>",
+"<value>",
+	    {"Ref" : "S3SecretKey"}, "</value>",
+"</property>",
+"<property>",
+"<name>dfs.client.use.legacy.blockreader.local</name>",
+"<value>false</value>",
+"</property>",
+"<property>",
+"<name>dfs.datanode.data.dir.perm</name>",
+"<value>750</value>",
+"</property>",
+"<property>",
+"<name>dfs.block.local-path-access.user</name>",
+"<value>impala</value>",
+"</property>",
+"<property>",
+"<name>dfs.client.read.shortcircuit</name>",
+"<value>false</value>",
+"</property>",
+"<property>",
+"<name>dfs.domain.socket.path</name>",
+"<value>/var/run/hdfs-sockets/dn</value>",
+"</property>",
+"<property>",
+"<name>dfs.client.file-block-storage-locations.timeout.millis</name>",
+"<value>10000</value>",
+"</property>",
+"<property>",
+"<name>dfs.datanode.hdfs-blocks-metadata.enabled</name>",
+"<value>true</value>",
+"</property>",
+"</configuration>"
+	    ] ]
+	  },
+	  "mode"  : "000666",
+	  "owner" : "ec2-user",
+	  "group" : "ec2-user"
+	  },
+	  "/etc/impala/conf/hdfs-site.xml" : {
+	    "content" : { "Fn::Join" : [ "", [
+"<?xml version=\"1.0\"?>",
+"<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
+"<configuration>",
+"<property>",
+"<name>javax.jdo.option.ConnectionURL</name>",
+"<value>jdbc:mysql://localhost/metastore</value>",
+"<description>the URL of the MySQL database</description>",
+"</property>",
+"<property>",
+"<name>javax.jdo.option.ConnectionDriverName</name>",
+"<value>com.mysql.jdbc.Driver</value>",
+"</property>",
+"<property>",
+"<name>javax.jdo.option.ConnectionUserName</name>",
+"<value>hive</value>",
+"</property>",
+"<property>",
+"<name>javax.jdo.option.ConnectionPassword</name>",
+"<value>mypassword</value>",
+"</property>",
+"<property>",
+"<name>datanucleus.autoCreateSchema</name>",
+"<value>false</value>",
+"</property>",
+"<property>",
+"<name>datanucleus.fixedDatastore</name>",
+"<value>true</value>",
+"</property>",
+"<property>",
+"<name>datanucleus.autoStartMechanism</name>",
+"<value>SchemaTable</value>",
+"</property>",
+"<property>",
+"<name>hive.metastore.uris</name>",
+"<value>thrift://127.0.0.1:9083</value>",
+"<description>IP address (or fully-qualified domain name) and port of the metastore host</description>",
+"</property>",
+"<property>",
+"<name>fs.s3n.awsAccessKeyId</name>",
+"<value>",
+	    {"Ref" : "S3AccessKey"},
+	    "</value>",
+"</property>",
+"<property>",
+"<name>fs.s3n.awsSecretAccessKey</name>",
+"<value>",
+	    {"Ref" : "S3SecretKey"},
+	    "</value>",
+"</property>",
+"</configuration>"
+	    ] ]
+	  },
+	  "mode"  : "000666",
+	  "owner" : "ec2-user",
+	  "group" : "ec2-user"
+	  },
+	  "/etc/default/impala" : {
+	    "content" : { "Fn::Join" : [ "", [
+"IMPALA_CATALOG_SERVICE_HOST=localhost\n",
+"IMPALA_STATE_STORE_HOST=localhost\n",
+"IMPALA_STATE_STORE_PORT=24000\n",
+"IMPALA_BACKEND_PORT=22000\n",
+"IMPALA_LOG_DIR=/var/log/impala\n",
+
+"IMPALA_CATALOG_ARGS=\" -log_dir=${IMPALA_LOG_DIR} \"\n",
+"IMPALA_STATE_STORE_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -state_store_port=${IMPALA_STATE_STORE_PORT}\"\n",
+"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/media/raid0/tmp\" \n",
+"ENABLE_CORE_DUMPS=false\n"
+	    ] ]
+	  },
+	  "mode"  : "000666",
+	  "owner" : "ec2-user",
+	  "group" : "ec2-user"
+	  }}}}},
     "I2GSecurityGroupMaster" : {
       "Type" : "AWS::EC2::SecurityGroup",
       "Properties" : {
