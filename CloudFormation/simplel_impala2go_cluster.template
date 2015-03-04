@@ -401,6 +401,10 @@
     "ClusterStatus" : {
       "Value" : {"Fn::Join" : ["", [ "http://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },":25000"] ] },
       "Description" : "ImpalaToGo Cluster status page"
+    },
+    "MasterDNS" : {
+      "Value" : {"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },
+      "Description" : "DNS of master node"
     }
   }
 
