@@ -123,16 +123,22 @@
 	"UserData": { "Fn::Base64" : { "Fn::Join" : ["", [
 	"#cloud-boothook\n",
 	"#!/bin/bash\n",
-	"echo -----------------[[[[]]]]------------------------------------------ >/tmp/Userdata.ran\n",
 	"yum update -y aws-cfn-bootstrap\n",
 	"# Install the files and packages from the metadata\n",
 	"/opt/aws/bin/cfn-init -v ",
 	"         --stack ", { "Ref" : "AWS::StackName" },
 	"         --resource I2gMaster ",
-	"         --configsets Install ",
+	"         --configsets configs ",
 	"         --region ", { "Ref" : "AWS::Region" }, "\n",
 	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
-	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n"
+	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n",
+	"rm -rf /var/cache/impalatogo \n",
+	"mkdir /dbcache/cache \n",
+	"ln -s /dbcache/cache /var/cache/impalatogo \n",
+	"chown -R impala /var/cache/impalatogo \n",
+	"chown -R impala /dbcache/cache \n",
+	"mkdir /dbcache/tmp \n",
+	"chown -R impala /dbcache/tmp \n"
 	]]}
 	}
 	},
@@ -141,7 +147,10 @@
         "Comment2" : "create /etc/impala/core-site.xml /etc/impala/conf/hdfs-site.xml /etc/impala/conf/hive-site.xml and /etc/default/impala",
 
         "AWS::CloudFormation::Init" : {
-          "config": {
+          "configSets" : {
+            "configs": [ "fileConfig" ]
+          },
+          "fileConfig": {
 	    "files" : {
 	      "/etc/impala/core-site.xml" : {
 		"content" : { "Fn::Join" : [ "", [
