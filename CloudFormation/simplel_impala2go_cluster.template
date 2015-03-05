@@ -417,14 +417,14 @@
 	  { "IpProtocol" : "tcp", "FromPort" : "26000", "ToPort" : "26000", "CidrIp" : "0.0.0.0/0"},
 	  { "IpProtocol" : "tcp", "FromPort" : "28000", "ToPort" : "28000", "CidrIp" : "0.0.0.0/0"}
 	  ]
-      }
-    },
-    "I2GSecurityGroupSlave" : {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-	"GroupDescription" : "SSH access",
-	"SecurityGroupIngress" : [
-	{ "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
+	 }
+	},
+	"I2GSecurityGroupSlave" : {
+	  "Type" : "AWS::EC2::SecurityGroup",
+	  "Properties" : {
+	  "GroupDescription" : "SSH access",
+	  "SecurityGroupIngress" : [
+	  { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
 	  { "IpProtocol" : "tcp", "FromPort" : "15000", "ToPort" : "15002", "CidrIp" : "0.0.0.0/0"},
 	  { "IpProtocol" : "tcp", "FromPort" : "21000", "ToPort" : "21000", "CidrIp" : "0.0.0.0/0"},
 	  { "IpProtocol" : "tcp", "FromPort" : "21050", "ToPort" : "21050", "CidrIp" : "0.0.0.0/0"},
@@ -432,10 +432,9 @@
 	  { "IpProtocol" : "tcp", "FromPort" : "23000", "ToPort" : "23000", "CidrIp" : "0.0.0.0/0"},
 	  { "IpProtocol" : "tcp", "FromPort" : "25000", "ToPort" : "25000", "CidrIp" : "0.0.0.0/0"}
 	  ]
+	}
       }
-    }
-  },
-
+    },
   "Outputs" : {
     "JDBC" : {
       "Value" : {"Fn::Join" : ["", [ "jdbc:impala://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },":21050"] ] },
