@@ -149,7 +149,7 @@
 
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "configs": [ "fileConfig" ]
+            "configs": [ "fileConfig", "serviceConfig" ]
           },
           "fileConfig": {
 	    "files" : {
@@ -360,6 +360,39 @@
 		"mode"  : "000666",
 		"owner" : "ec2-user",
 		"group" : "ec2-user"
+		}
+	      }
+	    },
+	  "serviceConfig":{
+	    "services" : {
+	      "sysvinit" : {
+		"hive-metastore" : {
+		  "enabled" : "true",
+		  "ensureRunning" : "true",
+		  "files" : ["/etc/impala/conf/hive-site.xml"]
+		  },
+		  "impala-state-store" : {
+		  "enabled" : "true",
+		  "ensureRunning" : "true",
+		  "files" : ["/etc/impala/conf/hive-site.xml"],
+		  "files" : ["/etc/impala/core-site.xml"],
+		  "files" : ["/etc/impala/conf/hdfs-site.xml"]
+		  },
+		  "impala-catalog" : {
+		  "enabled" : "true",
+		  "ensureRunning" : "true",
+		  "files" : ["/etc/impala/conf/hive-site.xml"],
+		  "files" : ["/etc/impala/core-site.xml"],
+		  "files" : ["/etc/impala/conf/hdfs-site.xml"]
+		  },
+		  "impala-server" : {
+		  "enabled" : "true",
+		  "ensureRunning" : "true",
+		  "files" : ["/etc/impala/conf/hive-site.xml"],
+		  "files" : ["/etc/impala/core-site.xml"],
+		  "files" : ["/etc/impala/conf/hdfs-site.xml"],
+		  "files" : ["/etc/default/impala"]
+		  }
 		}
 	      }
 	    }
