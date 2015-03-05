@@ -23,13 +23,14 @@
     },
     "S3Bucket" : {
       "Description" : "URL to S3 bucket with data",
-      "Type" : "String"
+      "Type" : "String",
+      "AllowedPattern" : "s3n://[a-zA-Z0-9/:]*"
     },
-    "S3AccessKey" : {
+    "S3AccessKeyID" : {
       "Description" : "AWS access key with permissions to access S3 bucket above",
       "Type" : "String"
     },
-    "S3SecretKey" : {
+    "S3AccessSecretKey" : {
       "Description" : "AWS secret key for the access key above",
       "Type" : "String"
     }
@@ -173,13 +174,13 @@
 		"<property>",
 		"<name>fs.s3n.awsAccessKeyId</name>",
 		"<value>",
-		{"Ref" : "S3AccessKey"},
+		{"Ref" : "S3AccessKeyID"},
 		"</value>",
 		"</property>",
 		"<property>",
 		"<name>fs.s3n.awsSecretAccessKey</name>",
 		"<value>",
-		{"Ref" : "S3SecretKey"},
+		{"Ref" : "S3AccessSecretKey"},
 		"</value>",
 		"</property>",
 		"<property>",
@@ -241,13 +242,13 @@
       "<property>",
       "<name>fs.s3n.awsAccessKeyId</name>",
       "<value>",
-		{"Ref" : "S3AccessKey"},
+		{"Ref" : "S3AccessKeyID"},
 		"</value>",
       "</property>",
       "<property>",
       "<name>fs.s3n.awsSecretAccessKey</name>",
       "<value>",
-		{"Ref" : "S3SecretKey"}, "</value>",
+		{"Ref" : "S3AccessSecretKey"}, "</value>",
       "</property>",
       "<property>",
       "<name>dfs.client.use.legacy.blockreader.local</name>",
@@ -326,13 +327,13 @@
       "<property>",
       "<name>fs.s3n.awsAccessKeyId</name>",
       "<value>",
-		{"Ref" : "S3AccessKey"},
+		{"Ref" : "S3AccessKeyID"},
 		"</value>",
       "</property>",
       "<property>",
       "<name>fs.s3n.awsSecretAccessKey</name>",
       "<value>",
-		{"Ref" : "S3SecretKey"},
+		{"Ref" : "S3AccessSecretKey"},
 		"</value>",
       "</property>",
       "</configuration>"
