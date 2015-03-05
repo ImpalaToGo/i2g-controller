@@ -14,6 +14,13 @@
       "Description" : "Identificator of Impala2go cluster",
       "Type" : "String"
     },
+    "ClusterCapacity" : {
+      "Description" : "How many Slave nodes to launch",
+      "Type" : "Number",
+      "Default" : "0",
+      "MinValue" : "0",
+      "MaxValue" : "20"
+    },
     "I2gInstanceType" : {
       "Description" : "ImpalaToGo instance type",
       "Type" : "String",
@@ -399,9 +406,364 @@
 	  }
 	}
       },
-    "I2GSecurityGroupMaster" : {
-      "Type" : "AWS::EC2::SecurityGroup",
+    "I2gSlave" : {
+      "Type" : "AWS::EC2::Instance",
       "Properties" : {
+	"KeyName" : { "Ref" : "KeyName" },
+	"InstanceType" : { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] },
+	"ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch",
+				 { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] }, "Arch" ] } ] },
+	"SecurityGroups" : [{ "Ref" : "I2GSecurityGroupSlave" }],
+	"BlockDeviceMappings" : [
+	  {
+	    "DeviceName"  : "/dev/sdb",
+	    "VirtualName" : "ephemeral0"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdc",
+	    "VirtualName" : "ephemeral1"
+	  }
+	],
+	"Tags" : [
+	{
+	    "Key" : "impala2go-role",
+	    "Value" : "slave reference"
+	},
+	{
+	    "Key" : "ClusterID",
+	    "Value" : { "Ref" : "ClusterID" }
+	} ],
+	"UserData": { "Fn::Base64" : { "Fn::Join" : ["", [
+	"#cloud-boothook\n",
+	"#!/bin/bash\n",
+	"yum update -y aws-cfn-bootstrap\n",
+	"# Install the files and packages from the metadata\n",
+	"/opt/aws/bin/cfn-init -v ",
+	"         --stack ", { "Ref" : "AWS::StackName" },
+	"         --resource I2gSlave ",
+	"         --configsets configs ",
+	"         --region ", { "Ref" : "AWS::Region" }, "\n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n",
+	"rm -rf /var/cache/impalatogo \n",
+	"mkdir -p /dbcache/cache \n",
+	"ln -s /dbcache/cache /var/cache/impalatogo \n",
+	"chown -R impala /var/cache/impalatogo \n",
+	"chown -R impala /dbcache/cache \n",
+	"mkdir -p /dbcache/tmp \n",
+	"chown -R impala /dbcache/tmp \n"
+	]]}
+	}
+	},
+	"Metadata" : {
+        "Comment1" : "Configure Impala sites with actual parameters.",
+        "Comment2" : "create /etc/impala/core-site.xml /etc/impala/conf/hdfs-site.xml /etc/impala/conf/hive-site.xml and /etc/default/impala",
+
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "configs": [ "fileConfig", "serviceConfig" ]
+          },
+          "fileConfig": {
+	    "files" : {
+	      "/etc/impala/core-site.xml" : {
+		"content" : { "Fn::Join" : [ "", [
+		"<?xml version=\"1.0\"?>",
+		"<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
+		"<configuration>",
+		"<property>",
+		"<name>fs.defaultFS</name>",
+		"<value>",
+		{"Ref" : "S3Bucket"},
+		"</value>",
+		"</property>",
+		"<property>",
+		"<name>fs.default.name</name>",
+		"<value>",
+		{"Ref" : "S3Bucket"},
+		"</value>",
+		"<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+		"</property>",
+		"<property>",
+		"<name>fs.s3n.awsAccessKeyId</name>",
+		"<value>",
+		{"Ref" : "S3AccessKeyID"},
+		"</value>",
+		"</property>",
+		"<property>",
+		"<name>fs.s3n.awsSecretAccessKey</name>",
+		"<value>",
+		{"Ref" : "S3AccessSecretKey"},
+		"</value>",
+		"</property>",
+		"<property>",
+		"<name>dfs.client.use.legacy.blockreader.local</name>",
+		"<value>false</value>",
+		"</property>",
+		"<property>",
+		"<name>dfs.datanode.data.dir.perm</name>",
+		"<value>750</value>",
+		"</property>",
+		"<property>",
+		"<name>dfs.block.local-path-access.user</name>",
+		"<value>impala</value>",
+		"</property>",
+		"<property>",
+		"<name>dfs.client.read.shortcircuit</name>",
+		"<value>false</value>",
+		"</property>",
+		"<property>",
+		"<name>dfs.domain.socket.path</name>",
+		"<value>/var/run/hdfs-sockets/dn</value>",
+		"</property>",
+		"<property>",
+		"<name>dfs.client.file-block-storage-locations.timeout.millis</name>",
+		"<value>10000</value>",
+		"</property>",
+		"<property>",
+		"<name>dfs.namenode.name.dir</name>",
+		"<value>file:///var/lib/hadoop-hdfs/cache/hdfs/dfs/name</value>",
+		"</property>",
+		"</configuration>"
+		] ]
+	      },
+	      "mode"  : "000666",
+	      "owner" : "ec2-user",
+	      "group" : "ec2-user"
+	      },
+	      "/etc/impala/conf/hdfs-site.xml" : {
+		"content" : { "Fn::Join" : [ "", [
+		"<?xml version=\"1.0\"?>",
+      "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
+      "<configuration>",
+      "<property>",
+      "<name>fs.defaultFS</name>",
+      "<value>",
+		{"Ref" : "S3Bucket"},
+		"</value> </property>",
+      "<property>",
+      "<name>dfs.permissions</name>",
+      "<value>false</value>",
+      "</property>",
+      "<property>",
+      "<name>fs.default.name</name>",
+      "<value>",
+		{"Ref" : "S3Bucket"},
+		"</value>",
+      "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+      "</property>",
+      "<property>",
+      "<name>fs.s3n.awsAccessKeyId</name>",
+      "<value>",
+		{"Ref" : "S3AccessKeyID"},
+		"</value>",
+      "</property>",
+      "<property>",
+      "<name>fs.s3n.awsSecretAccessKey</name>",
+      "<value>",
+		{"Ref" : "S3AccessSecretKey"}, "</value>",
+      "</property>",
+      "<property>",
+      "<name>dfs.client.use.legacy.blockreader.local</name>",
+      "<value>false</value>",
+      "</property>",
+      "<property>",
+      "<name>dfs.datanode.data.dir.perm</name>",
+      "<value>750</value>",
+      "</property>",
+      "<property>",
+      "<name>dfs.block.local-path-access.user</name>",
+      "<value>impala</value>",
+      "</property>",
+      "<property>",
+      "<name>dfs.client.read.shortcircuit</name>",
+      "<value>false</value>",
+      "</property>",
+      "<property>",
+      "<name>dfs.domain.socket.path</name>",
+      "<value>/var/run/hdfs-sockets/dn</value>",
+      "</property>",
+      "<property>",
+      "<name>dfs.client.file-block-storage-locations.timeout.millis</name>",
+      "<value>10000</value>",
+      "</property>",
+      "<property>",
+      "<name>dfs.datanode.hdfs-blocks-metadata.enabled</name>",
+      "<value>true</value>",
+      "</property>",
+      "</configuration>"
+		] ]
+	      },
+	      "mode"  : "000666",
+	      "owner" : "ec2-user",
+	      "group" : "ec2-user"
+	      },
+	      "/etc/impala/conf/hive-site.xml" : {
+		"content" : { "Fn::Join" : [ "", [
+      "<?xml version=\"1.0\"?>",
+      "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
+      "<configuration>",
+      "<property>",
+      "<name>javax.jdo.option.ConnectionURL</name>",
+      "<value>jdbc:mysql://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },"/metastore</value>",
+      "<description>the URL of the MySQL database</description>",
+      "</property>",
+      "<property>",
+      "<name>javax.jdo.option.ConnectionDriverName</name>",
+      "<value>com.mysql.jdbc.Driver</value>",
+      "</property>",
+      "<property>",
+      "<name>javax.jdo.option.ConnectionUserName</name>",
+      "<value>hive</value>",
+      "</property>",
+      "<property>",
+      "<name>javax.jdo.option.ConnectionPassword</name>",
+      "<value>mypassword</value>",
+      "</property>",
+      "<property>",
+      "<name>datanucleus.autoCreateSchema</name>",
+      "<value>false</value>",
+      "</property>",
+      "<property>",
+      "<name>datanucleus.fixedDatastore</name>",
+      "<value>true</value>",
+      "</property>",
+      "<property>",
+      "<name>datanucleus.autoStartMechanism</name>",
+      "<value>SchemaTable</value>",
+      "</property>",
+      "<property>",
+      "<name>hive.metastore.uris</name>",
+      "<value>thrift://127.0.0.1:9083</value>",
+      "<description>IP address (or fully-qualified domain name) and port of the metastore host</description>",
+      "</property>",
+      "<property>",
+      "<name>fs.s3n.awsAccessKeyId</name>",
+      "<value>",
+		{"Ref" : "S3AccessKeyID"},
+		"</value>",
+      "</property>",
+      "<property>",
+      "<name>fs.s3n.awsSecretAccessKey</name>",
+      "<value>",
+		{"Ref" : "S3AccessSecretKey"},
+		"</value>",
+      "</property>",
+      "</configuration>"
+		] ]
+	      },
+	      "mode"  : "000666",
+	      "owner" : "ec2-user",
+	      "group" : "ec2-user"
+	      },
+	      "/etc/default/impala" : {
+		  "content" : { "Fn::Join" : [ "", [
+	"IMPALA_CATALOG_SERVICE_HOST=",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },"\n",
+	"IMPALA_STATE_STORE_HOST=",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },"\n",
+	"IMPALA_STATE_STORE_PORT=24000\n",
+	"IMPALA_BACKEND_PORT=22000\n",
+	"IMPALA_LOG_DIR=/var/log/impala\n",
+
+	"IMPALA_CATALOG_ARGS=\" -log_dir=${IMPALA_LOG_DIR} \"\n",
+	"IMPALA_STATE_STORE_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -state_store_port=${IMPALA_STATE_STORE_PORT}\"\n",
+	"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/dbcache/tmp\" \n",
+	"ENABLE_CORE_DUMPS=false\n"
+		  ] ]
+		},
+		"mode"  : "000666",
+		"owner" : "ec2-user",
+		"group" : "ec2-user"
+		}
+	      }
+	    },
+	  "serviceConfig":{
+	    "services" : {
+	      "sysvinit" : {
+		  "impala-server" : {
+		  "enabled" : "true",
+		  "ensureRunning" : "true",
+		  "files" : ["/etc/impala/conf/hive-site.xml"],
+		  "files" : ["/etc/impala/core-site.xml"],
+		  "files" : ["/etc/impala/conf/hdfs-site.xml"],
+		  "files" : ["/etc/default/impala"]
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+      },
+      "I2GlaunchSlaves" : {
+	"Type" : "AWS::AutoScaling::LaunchConfiguration",
+	"Properties" : {
+	  "BlockDeviceMappings" : [
+	    {
+	      "DeviceName"  : "/dev/sdb",
+	      "VirtualName" : "ephemeral0"
+	    },
+	    {
+	      "DeviceName"  : "/dev/sdc",
+	      "VirtualName" : "ephemeral1"
+	    }
+	  ],
+	  "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch",
+				 { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] }, "Arch" ] } ] },
+	  "InstanceType" : { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] },
+	  "KeyName" : { "Ref" : "KeyName" },
+	  "SecurityGroups" :  [{ "Ref" : "I2GSecurityGroupSlave" }],
+	  "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+	"#cloud-boothook\n",
+	"#!/bin/bash\n",
+	"yum update -y aws-cfn-bootstrap\n",
+	"# Install the files and packages from the metadata\n",
+	"# --resource set to match slave configuration!!!\n",
+	"/opt/aws/bin/cfn-init -v ",
+	"         --stack ", { "Ref" : "AWS::StackName" },
+	"         --resource I2gSlave ",
+	"         --configsets configs ",
+	"         --region ", { "Ref" : "AWS::Region" }, "\n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n",
+	"rm -rf /var/cache/impalatogo \n",
+	"mkdir -p /dbcache/cache \n",
+	"ln -s /dbcache/cache /var/cache/impalatogo \n",
+	"chown -R impala /var/cache/impalatogo \n",
+	"chown -R impala /dbcache/cache \n",
+	"mkdir -p /dbcache/tmp \n",
+	"chown -R impala /dbcache/tmp \n"
+	]]}
+	}
+	}
+      },
+	"I2GSlavesScalingGroup": {
+	  "Type" : "AWS::AutoScaling::AutoScalingGroup",
+	  "Properties" : {
+	    "AvailabilityZones" : [ "us-east-1a","us-east-1b","us-east-1c","us-east-1d","us-east-1e" ],
+	    "Cooldown" : "120",
+	    "DesiredCapacity" : { "Ref" : "ClusterCapacity" },
+	    "HealthCheckGracePeriod" : "240",
+	    "HealthCheckType" : "EC2",
+	    "LaunchConfigurationName" : {"Ref" : "I2GlaunchSlaves" },
+	    "MaxSize" : "20",
+	    "MinSize" : "0",
+	    "Tags" : [
+	      {
+		"PropagateAtLaunch": true,
+		"Key" : "impala2go-role",
+		"Value" : "slave"
+	      },
+	      {
+		"PropagateAtLaunch": true,
+		"Key" : "ClusterID",
+		"Value" : { "Ref" : "ClusterID" }
+	      }
+	    ]
+	  }
+	},
+	"I2GSecurityGroupMaster" : {
+	"Type" : "AWS::EC2::SecurityGroup",
+	"Properties" : {
 	"GroupDescription" : "SSH access",
 	"SecurityGroupIngress" : [
 	  { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
