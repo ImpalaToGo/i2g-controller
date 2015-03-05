@@ -134,11 +134,11 @@
 	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
 	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n",
 	"rm -rf /var/cache/impalatogo \n",
-	"mkdir /dbcache/cache \n",
+	"mkdir -p /dbcache/cache \n",
 	"ln -s /dbcache/cache /var/cache/impalatogo \n",
 	"chown -R impala /var/cache/impalatogo \n",
 	"chown -R impala /dbcache/cache \n",
-	"mkdir /dbcache/tmp \n",
+	"mkdir -p /dbcache/tmp \n",
 	"chown -R impala /dbcache/tmp \n"
 	]]}
 	}
@@ -353,7 +353,7 @@
 
 	"IMPALA_CATALOG_ARGS=\" -log_dir=${IMPALA_LOG_DIR} \"\n",
 	"IMPALA_STATE_STORE_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -state_store_port=${IMPALA_STATE_STORE_PORT}\"\n",
-	"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/media/raid0/tmp\" \n",
+	"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/dbcache/tmp\" \n",
 	"ENABLE_CORE_DUMPS=false\n"
 		  ] ]
 		},
