@@ -22,11 +22,11 @@
       "MaxValue" : "20"
     },
     "I2gInstanceType" : {
-      "Description" : "ImpalaToGo instance type",
+      "Description" : "Instance type to use for the cluster.",
       "Type" : "String",
-      "Default" : "small",
-      "AllowedValues" : [ "small","medium","large"],
-      "ConstraintDescription" : "Should be one of small, medium or large"
+      "Default" : "m3.large",
+      "AllowedValues" : [ "c3.large", "m3.large", "m3.xlarge", "m3.2xlarge"],
+      "ConstraintDescription" : "Tested instance types."
     },
     "S3Bucket" : {
       "Description" : "URL to S3 bucket with data",
@@ -86,28 +86,19 @@
       "hs1.8xlarge" : { "Arch" : "HVM64"  },
       "cr1.8xlarge" : { "Arch" : "HVM64"  },
       "cc2.8xlarge" : { "Arch" : "HVM64"  }
-    }
-,
+    },
     "AWSRegionArch2AMI" : {
       "us-east-1"        : {"PV64" : "ami-78742110", "HVM64" : "ami-78742110", "HVMG2" : "ami-78742110"}
     }
-,
-    "I2gType2InstanceType" : {
-      "small" : { "InstanceType" : "c3.large" },
-      "medium" : { "InstanceType" : "m3.xlarge" },
-      "large" : { "InstanceType" : "m3.2xlarge" }
-    }
   },
-
   "Resources" : {
     "I2gMaster" : {
       "Type" : "AWS::EC2::Instance", 
       "Properties" : {
 	"KeyName" : { "Ref" : "KeyName" },
-	"InstanceType" : { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] },
+	"InstanceType" : { "Ref" : "I2gInstanceType" },
 	"ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
-			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch", 
-				 { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] }, "Arch" ] } ] },
+			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch",  { "Ref" : "I2gInstanceType" }, "Arch" ] } ] },
 	"SecurityGroups" : [{ "Ref" : "I2GSecurityGroupMaster" }],
 	"BlockDeviceMappings" : [
 	  {
@@ -405,15 +396,14 @@
 	    }
 	  }
 	}
-      },
+     },
     "I2gSlave" : {
       "Type" : "AWS::EC2::Instance",
       "Properties" : {
 	"KeyName" : { "Ref" : "KeyName" },
-	"InstanceType" : { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] },
+	"InstanceType" : { "Ref" : "I2gInstanceType" },
 	"ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
-			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch",
-				 { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] }, "Arch" ] } ] },
+			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "I2gInstanceType" }, "Arch" ] } ] },
 	"SecurityGroups" : [{ "Ref" : "I2GSecurityGroupSlave" }],
 	"BlockDeviceMappings" : [
 	  {
@@ -707,9 +697,8 @@
 	    }
 	  ],
 	  "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
-			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch",
-				 { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] }, "Arch" ] } ] },
-	  "InstanceType" : { "Fn::FindInMap" : [ "I2gType2InstanceType", { "Ref" : "I2gInstanceType" }, "InstanceType" ] },
+			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch",{ "Ref" : "I2gInstanceType" }, "Arch" ] } ] },
+	  "InstanceType" :  { "Ref" : "I2gInstanceType" },
 	  "KeyName" : { "Ref" : "KeyName" },
 	  "SecurityGroups" :  [{ "Ref" : "I2GSecurityGroupSlave" }],
 	  "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
