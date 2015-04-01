@@ -1,2 +1,2 @@
 validate:
-	aws cloudformation validate-template --template-body file://simplel_impala2go_cluster.template
+	aws cloudformation validate-template --template-body file://Impala2go-cluster.template
