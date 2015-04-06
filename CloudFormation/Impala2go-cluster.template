@@ -1,14 +1,14 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
 
-  "Description" : "Template for creation trivial Impala2go cluster",
+  "Description" : "Template for creation Impala2go cluster. Up to 50 backends.",
 
   "Parameters" : {
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the web server",
       "Type": "AWS::EC2::KeyPair::KeyName",
       "Default" : "resize-1",
-      "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+      "ConstraintDescription" : "Must be the name of an existing EC2 KeyPair."
     },
     "ClusterID" : {
       "Description" : "Identificator of Impala2go cluster",
@@ -29,7 +29,7 @@
       "ConstraintDescription" : "Tested instance types."
     },
     "S3Bucket" : {
-      "Description" : "URL to S3 bucket with data",
+      "Description" : "URL to S3 bucket with data. In form of s3n://<your bucket>",
       "Type" : "String",
       "AllowedPattern" : "s3n://[a-zA-Z0-9/:]*"
     },
