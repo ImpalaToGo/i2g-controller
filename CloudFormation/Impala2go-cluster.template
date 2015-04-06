@@ -31,7 +31,7 @@
     "S3Bucket" : {
       "Description" : "URL to S3 bucket with data. In form of s3n://<your bucket>",
       "Type" : "String",
-      "AllowedPattern" : "s3n://[a-zA-Z0-9/:]*"
+      "AllowedPattern" : "s3n://.*"
     },
     "S3AccessKeyID" : {
       "Description" : "AWS access key with permissions to access S3 bucket above",
