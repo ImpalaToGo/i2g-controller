@@ -105,8 +105,9 @@ fi
 set -x
 echo $($LOG_PREFIX) Creating RAID on instances|$LOG_APPEND
 copy_to_all create_raid /tmp
-run_cmd_on_all "sudo cp /tmp/create_raid /etc/init.d/ && sudo ln -s /etc/init.d/create_raid /etc/rc3.d/S15create_raid && sudo ln -s /etc/init.d/create_raid /etc/rc2.d/S15create_raid && sudo /etc/init.d/create_raid"|$LOG_APPEND
+run_cmd_on_all "sudo cp /tmp/create_raid /etc/init.d/ && [[ ! -h /etc/rc3.d/S16create_raid ]] && sudo ln -s /etc/init.d/create_raid /etc/rc3.d/S16create_raid && [[ ! -h /etc/rc3.d/S16create_raid ]] &&  sudo ln -s /etc/init.d/create_raid /etc/rc2.d/S16create_raid && sudo /etc/init.d/create_raid"|$LOG_APPEND
 run_cmd_on_all "sudo /etc/init.d/create_raid"|$LOG_APPEND
+
 copy_to_all target/attachToCluster.sh /home/ec2-user/
 copy_to_all conf/* /home/ec2-user/conf/
 
