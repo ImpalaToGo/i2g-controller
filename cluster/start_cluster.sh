@@ -102,11 +102,14 @@ then
 else
 	tag_slaves $MASTER_NODE
 fi
-#set -x
+set -x
 echo $($LOG_PREFIX) Creating RAID on instances|$LOG_APPEND
 copy_to_all create_raid /tmp
 run_cmd_on_all "sudo cp /tmp/create_raid /etc/init.d/ && sudo ln -s /etc/init.d/create_raid /etc/rc3.d/S15create_raid && sudo ln -s /etc/init.d/create_raid /etc/rc2.d/S15create_raid && sudo /etc/init.d/create_raid"|$LOG_APPEND
 run_cmd_on_all "sudo /etc/init.d/create_raid"|$LOG_APPEND
+copy_to_all target/attachToCluster.sh /home/ec2-user/
+copy_to_all conf/* /home/ec2-user/conf/
+
 echo $($LOG_PREFIX) Starting $BASE_NAME Cluster|$LOG_APPEND
 if [ "$NODE_TYPE" = "master" ]; then
 	run_cmd_on_all "sudo /home/ec2-user/attachToCluster.sh  $ACCESS_KEY $SECRET_KEY localhost $S3_BUCKET &&  sudo /home/ec2-user/restart_master.sh" |$LOG_APPEND
