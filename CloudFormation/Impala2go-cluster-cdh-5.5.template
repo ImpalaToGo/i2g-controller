@@ -1,8 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-
-  "Description" : "Template for creation Impala2go cluster. Up to 50 backends.",
-
+  "Description" : "Impala2go cluster. Up to 50 backends.",
   "Parameters" : {
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the web server",
@@ -20,6 +18,13 @@
       "Default" : "1",
       "MinValue" : "1",
       "MaxValue" : "50"
+    },
+    "ClusterDFSCacheType" : {
+      "Description" : "DFS Cache technology used for this cluster.",
+      "Type" : "String",
+      "Default" : "Embedded",
+      "AllowedValues" : [ "Embedded", "Tachyon", "Pass-Through"],
+      "ConstraintDescription" : "embedded - native LRU cache<br/>Tachyon - using Tachyon project<br/>pass-trough - no cache."
     },
     "I2gInstanceType" : {
       "Description" : "Instance type to use for the cluster.",
@@ -91,7 +96,7 @@
       "cc2.8xlarge" : { "Arch" : "HVM64"  }
     },
     "AWSRegionArch2AMI" : {
-      "us-east-1"        : {"PV64" : "ami-d86758b0", "HVM64" : "ami-d86758b0", "HVMG2" : "ami-d86758b0"}
+      "us-east-1"        : {"PV64" : "ami-a6686bce", "HVM64" : "ami-a6686bce", "HVMG2" : "ami-a6686bce"}
     },
     "ClusterCapacityToNumberOfSlaves" : {
       "1" : { "Num" : "0"},
@@ -144,9 +149,64 @@
       "48" : { "Num" : "46"},
       "49" : { "Num" : "47"},
       "50" : { "Num" : "48"}
+    },
+    "CacheDependentParams":{
+    "Embedded": {"ImpalaStartupParam":" -cache_location=/dbcache/ -cache_mem_percent_of_available=85 ", "CommentTachyonStart":" <!-- ","CommentTachyonEnd":" --> ", "CommentEmbeddedStart":"","CommentEmbeddedEnd":""},
+    "Tachyon": {"ImpalaStartupParam":" -cache_location= -cache_mem_percent_of_available=0 ", "CommentTachyonStart":"","CommentTachyonEnd":"","CommentEmbeddedStart":" <!-- ","CommentEmbeddedEnd":" -->"},
+    "Pass-Through":{"ImpalaStartupParam":" -cache_location= -cache_mem_percent_of_available=0 ", "CommentTachyonStart":"<!--","CommentTachyonEnd":"-->", "CommentEmbeddedStart":"","CommentEmbeddedEnd":""}
     }
   },
   "Resources" : {
+    "MasterEIP" : {
+      "Type" : "AWS::EC2::EIP"
+     },
+    "MasterEIPAssociation" : {
+      "Type" : "AWS::EC2::EIPAssociation",
+      "Properties": {
+      "EIP" : { "Ref" : "MasterEIP" },
+      "InstanceId" : { "Ref" : "I2gMaster" }
+      }
+    },
+    "I2GSecurityGroupMaster" : {
+	"Type" : "AWS::EC2::SecurityGroup",
+	"Properties" : {
+	"GroupDescription" : "SSH access",
+	"SecurityGroupIngress" : [
+	  { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "15000", "ToPort" : "15002", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "19998", "ToPort" : "19999", "CidrIp" : "0.0.0.0/0"},
+          { "IpProtocol" : "tcp", "FromPort" : "29998", "ToPort" : "29999", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "21050", "ToPort" : "21050", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "22000", "ToPort" : "22000", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "23000", "ToPort" : "23000", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "24000", "ToPort" : "24000", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "25000", "ToPort" : "25000", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "25010", "ToPort" : "25010", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "25020", "ToPort" : "25020", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "26000", "ToPort" : "26000", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "28000", "ToPort" : "28000", "CidrIp" : "0.0.0.0/0"}
+	  ]
+	 }
+	},
+    "I2GSecurityGroupSlave" : {
+	  "Type" : "AWS::EC2::SecurityGroup",
+	  "Condition" : "ShouldCreateFirstSlave",
+	  "Properties" : {
+	  "GroupDescription" : "SSH access",
+	  "SecurityGroupIngress" : [
+	  { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "15000", "ToPort" : "15002", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "21000", "ToPort" : "21000", "CidrIp" : "0.0.0.0/0"},
+          { "IpProtocol" : "tcp", "FromPort" : "19998", "ToPort" : "19999", "CidrIp" : "0.0.0.0/0"},
+          { "IpProtocol" : "tcp", "FromPort" : "29998", "ToPort" : "29999", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "21050", "ToPort" : "21050", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "22000", "ToPort" : "22000", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "23000", "ToPort" : "23000", "CidrIp" : "0.0.0.0/0"},
+	  { "IpProtocol" : "tcp", "FromPort" : "25000", "ToPort" : "25000", "CidrIp" : "0.0.0.0/0"}
+	  ]
+	}
+	},
     "I2gMaster" : {
       "Type" : "AWS::EC2::Instance", 
       "Properties" : {
@@ -165,7 +225,7 @@
 	    "VirtualName" : "ephemeral1"
 	  }
 	],
-	"Tags" : [ 
+	"Tags" : [
 	{
 	    "Key" : "impala2go-role",
 	    "Value" : "master"
@@ -178,31 +238,37 @@
 	"#cloud-boothook\n",
 	"#!/bin/bash\n",
 	"yum update -y aws-cfn-bootstrap\n",
-	"# Install the files and packages from the metadata\n",
-	"/opt/aws/bin/cfn-init -v ",
-	"         --stack ", { "Ref" : "AWS::StackName" },
-	"         --resource I2gMaster ",
-	"         --configsets configs ",
-	"         --region ", { "Ref" : "AWS::Region" }, "\n",
-	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
-	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n",
 	"rm -rf /var/cache/impalatogo \n",
 	"mkdir -p /dbcache/cache \n",
 	"ln -s /dbcache/cache /var/cache/impalatogo \n",
 	"chown -R impala /var/cache/impalatogo \n",
 	"chown -R impala /dbcache/cache \n",
 	"mkdir -p /dbcache/tmp \n",
-	"chown -R impala /dbcache/tmp \n"
+	"mkdir -p /dbcache/tmp-tachyon/workers \n",
+	"mkdir -p /dbcache/tmp-tachyon/data \n",
+	"chown -R impala /dbcache/ \n",
+	"mkdir -p /home/ec2-user/build/tachyon/logs \n",
+	"chmod -R a+wr /home/ec2-user/build/tachyon/logs \n",
+	"mkdir -p /mnt/ramdisk/tachyonworker \n",
+	"chmod 777 tachyonworker \n",
+	"chmod -R a+rw /dbcache/ \n",
+	"/opt/aws/bin/cfn-init -v ",
+	"         --stack ", { "Ref" : "AWS::StackName" },
+	"         --resource I2gMaster ",
+	"         --configsets configs ",
+	"         --region ", { "Ref" : "AWS::Region" }, "\n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n"
 	]]}
 	}
 	},
-	"Metadata" : {
+      "Metadata" : {
         "Comment1" : "Configure Impala sites with actual parameters.",
         "Comment2" : "create /etc/impala/core-site.xml /etc/impala/conf/hdfs-site.xml /etc/impala/conf/hive-site.xml and /etc/default/impala",
 
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "configs": [ "fileConfig", "serviceConfig" ]
+            "configs": [ "fileConfig", "commandConfig", "serviceConfig" ]
           },
           "fileConfig": {
 	    "files" : {
@@ -211,6 +277,7 @@
 		"<?xml version=\"1.0\"?>",
 		"<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
 		"<configuration>",
+		{ "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedStart" ]},
 		"<property>",
 		"<name>fs.defaultFS</name>",
 		"<value>",
@@ -223,6 +290,26 @@
 		{"Ref" : "S3Bucket"},
 		"</value>",
 		"<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+		"</property>",
+		{ "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedEnd" ]},
+		{ "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonStart" ]},
+		"<property>",
+		"<name>fs.defaultFS</name>",
+		"<value>",
+		{"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+		"</value>",
+		"</property>",
+		"<property>",
+		"<name>fs.default.name</name>",
+		"<value>",
+		{"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+		"</value>",
+		"<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+		"</property>",
+		{ "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonEnd" ]},
+		"<property>",
+		"<name>dfs.permissions</name>",
+		"<value>false</value>",
 		"</property>",
 		"<property>",
 		"<name>fs.s3n.awsAccessKeyId</name>",
@@ -276,27 +363,46 @@
 		"<?xml version=\"1.0\"?>",
       "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
       "<configuration>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedStart" ]},
       "<property>",
       "<name>fs.defaultFS</name>",
       "<value>",
-		{"Ref" : "S3Bucket"},
-		"</value> </property>",
-      "<property>",
-      "<name>dfs.permissions</name>",
-      "<value>false</value>",
+      {"Ref" : "S3Bucket"},
+      "</value>",
       "</property>",
       "<property>",
       "<name>fs.default.name</name>",
       "<value>",
-		{"Ref" : "S3Bucket"},
-		"</value>",
+      {"Ref" : "S3Bucket"},
+      "</value>",
       "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
       "</property>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedEnd" ]},
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonStart" ]},
+      "<property>",
+      "<name>fs.defaultFS</name>",
+      "<value>",
+      {"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+      "</value>",
+      "</property>",
+      "<property>",
+      "<name>fs.default.name</name>",
+      "<value>",
+      {"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+      "</value>",
+      "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+      "</property>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonEnd" ]},
+      "<property>",
+      "<name>dfs.permissions</name>",
+      "<value>false</value>",
+      "</property>",
+      "<property><name>fs.s3.buffer.dir</name><value>/dbcache/tmp/s3/</value></property>",
       "<property>",
       "<name>fs.s3n.awsAccessKeyId</name>",
       "<value>",
-		{"Ref" : "S3AccessKeyID"},
-		"</value>",
+      {"Ref" : "S3AccessKeyID"},
+      "</value>",
       "</property>",
       "<property>",
       "<name>fs.s3n.awsSecretAccessKey</name>",
@@ -406,7 +512,8 @@
 
 	"IMPALA_CATALOG_ARGS=\" -log_dir=${IMPALA_LOG_DIR} \"\n",
 	"IMPALA_STATE_STORE_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -state_store_port=${IMPALA_STATE_STORE_PORT}\"\n",
-	"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/dbcache/tmp\" \n",
+	"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/dbcache/tmp", 
+	{ "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "ImpalaStartupParam" ]},"\" \n",
 	"ENABLE_CORE_DUMPS=false\n",
 	"IMPALA_HOME=${IMPALA_HOME:-/usr/lib/impala}\n",
 	"export CLASSPATH=${IMPALA_HOME}/lib/tachyon-client-0.7.0-SNAPSHOT-jar-with-dependencies.jar:${IMPALA_HOME}/lib/json-simple-1.1.1.jar:${CLASSPATH}\n"
@@ -415,9 +522,105 @@
 		"mode"  : "000666",
 		"owner" : "ec2-user",
 		"group" : "ec2-user"
+		},
+	      "/home/ec2-user/build/tachyon/conf/tachyon-env.sh" : {
+		  "mode" : "000777",
+		  "owner" : "ec2-user",
+		  "group" : "ec2-user",
+		  "content" : { "Fn::Join" : ["", [
+"#!/usr/bin/env bash \n",
+" \n",
+"if [[ `uname -a` == Darwin* ]]; then \n",
+"  # Assuming Mac OS X \n",
+"  export JAVA_HOME=${JAVA_HOME:-$(/usr/libexec/java_home)} \n",
+"  export TACHYON_RAM_FOLDER=/Volumes/ramdisk \n",
+"  export TACHYON_JAVA_OPTS=\"-Djava.security.krb5.realm= -Djava.security.krb5.kdc=\" \n",
+"else \n",
+"  # Assuming Linux \n",
+"  if [ -z \"$JAVA_HOME\" ]; then \n",
+"    if [ -d /usr/lib/jvm/java-7-oracle ]; then \n",
+"      export JAVA_HOME=/usr/lib/jvm/java-7-oracle \n",
+"    else \n",
+"      # openjdk will set this \n",
+"      if [ -d /usr/lib/jvm/jre-1.7.0 ]; then \n",
+"        export JAVA_HOME=/usr/lib/jvm/jre-1.7.0 \n",
+"      fi \n",
+"    fi \n",
+"  fi \n",
+"  export TACHYON_RAM_FOLDER=/mnt/ramdisk \n",
+"fi \n",
+" \n",
+"if [ -z \"$JAVA_HOME\" ]; then \n",
+"  export JAVA_HOME=\"$(dirname $(which java))/..\" \n",
+"fi \n",
+" \n",
+"export JAVA=\"$JAVA_HOME/bin/java\" \n",
+"export TACHYON_MASTER_ADDRESS=",{ "Ref" : "MasterEIP" }," \n",
+"export TACHYON_UNDERFS_ADDRESS=",{"Ref" : "S3Bucket"}," \n",
+"export TACHYON_WORKER_MEMORY_SIZE=1GB \n",
+"export TACHYON_UNDERFS_HDFS_IMPL=org.apache.hadoop.hdfs.DistributedFileSystem \n",
+"export TACHYON_WORKER_MAX_WORKER_THREADS=2048 \n",
+"export TACHYON_MASTER_MAX_WORKER_THREADS=2048 \n",
+" \n",
+"export TACHYON_SSH_FOREGROUND=\"yes\" \n",
+"export TACHYON_WORKER_SLEEP=\"0.02\" \n",
+" \n",
+"CONF_DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\" \n",
+" \n",
+"export TACHYON_JAVA_OPTS+=\" \n",
+"  -Dlog4j.configuration=file:$CONF_DIR/log4j.properties \n",
+"  -Dtachyon.debug=false \n",
+"  -Dtachyon.worker.hierarchystore.level.max=1 \n",
+"  -Dtachyon.worker.hierarchystore.level0.alias=MEM \n",
+"  -Dtachyon.worker.hierarchystore.level0.dirs.path=$TACHYON_RAM_FOLDER \n",
+"  -Dtachyon.worker.hierarchystore.level0.dirs.quota=$TACHYON_WORKER_MEMORY_SIZE \n",
+"  -Dtachyon.underfs.address=$TACHYON_UNDERFS_ADDRESS \n",
+"  -Dtachyon.underfs.hdfs.impl=$TACHYON_UNDERFS_HDFS_IMPL \n",
+"  -Dtachyon.data.folder=/dbcache/tmp/tachyon/data \n",
+"  -Dtachyon.worker.max.worker.threads=$TACHYON_WORKER_MAX_WORKER_THREADS \n",
+"  -Dtachyon.workers.folder=/dbcache/tmp/tachyon/workers \n",
+"  -Dtachyon.worker.memory.size=$TACHYON_WORKER_MEMORY_SIZE \n",
+"  -Dtachyon.worker.data.folder=/tachyonworker/ \n",
+"  -Dtachyon.master.max.worker.threads=$TACHYON_MASTER_MAX_WORKER_THREADS \n",
+"  -Dtachyon.master.worker.timeout.ms=60000 \n",
+"  -Dtachyon.master.hostname=$TACHYON_MASTER_ADDRESS \n",
+"  -Dtachyon.master.journal.folder=$TACHYON_HOME/journal/ \n",
+"  -Dorg.apache.jasper.compiler.disablejsr199=true \n",
+"  -Djava.net.preferIPv4Stack=true \n",
+"  -Dhadoop.home.dir=/usr/lib/hadoop-0.20-mapreduce/ \n",
+"  -Dfs.s3n.awsAccessKeyId=",{"Ref" : "S3AccessKeyID"}," \n",
+"  -Dfs.s3n.awsSecretAccessKey=",{"Ref" : "S3AccessSecretKey"}," \n",
+"\" \n",
+" \n",
+"# Master specific parameters. Default to TACHYON_JAVA_OPTS. \n",
+"export TACHYON_MASTER_JAVA_OPTS=\"$TACHYON_JAVA_OPTS\" \n",
+" \n",
+"# Worker specific parameters that will be shared to all workers. Default to TACHYON_JAVA_OPTS. \n",
+"export TACHYON_WORKER_JAVA_OPTS=\"$TACHYON_JAVA_OPTS\" \n"
+		  ] ]
+		  }
 		}
 	      }
 	    },
+	  "commandConfig" : {
+	    "commands" : {
+	      "formatTachyon" : {
+		"command" : "/home/ec2-user/build/tachyon/bin/tachyon format|tee -a /home/ec2-user/build/tachyon/logs/startup.log",
+		"cwd" : "/home/ec2-user/build/tachyon/",
+		"ignoreErrors" : "true"
+	      },
+	      "startTachyonMaster" : {
+		"command" : "/home/ec2-user/build/tachyon/bin/tachyon-start.sh master|tee -a /home/ec2-user/build/tachyon/logs/startup.log",
+		"cwd" : "/home/ec2-user/build/tachyon/",
+		"ignoreErrors" : "true"
+	      },
+	      "startTachyonWorker" : {
+		"command" : "/home/ec2-user/build/tachyon/bin/tachyon-start.sh worker Mount|tee -a /home/ec2-user/build/tachyon/logs/startup.log",
+		"cwd" : "/home/ec2-user/build/tachyon/",
+		"ignoreErrors" : "true"
+	      }
+	    }
+	  },
 	  "serviceConfig":{
 	    "services" : {
 	      "sysvinit" : {
@@ -453,7 +656,7 @@
 	    }
 	  }
 	}
-     },
+    },
     "I2gSlave" : {
       "Type" : "AWS::EC2::Instance",
       "Condition" : "ShouldCreateFirstSlave",
@@ -486,21 +689,27 @@
 	"#cloud-boothook\n",
 	"#!/bin/bash\n",
 	"yum update -y aws-cfn-bootstrap\n",
-	"# Install the files and packages from the metadata\n",
-	"/opt/aws/bin/cfn-init -v ",
-	"         --stack ", { "Ref" : "AWS::StackName" },
-	"         --resource I2gSlave ",
-	"         --configsets configs ",
-	"         --region ", { "Ref" : "AWS::Region" }, "\n",
-	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
-	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n",
 	"rm -rf /var/cache/impalatogo \n",
 	"mkdir -p /dbcache/cache \n",
 	"ln -s /dbcache/cache /var/cache/impalatogo \n",
 	"chown -R impala /var/cache/impalatogo \n",
 	"chown -R impala /dbcache/cache \n",
 	"mkdir -p /dbcache/tmp \n",
-	"chown -R impala /dbcache/tmp \n"
+	"mkdir -p /dbcache/tmp-tachyon/workers \n",
+	"mkdir -p /dbcache/tmp-tachyon/data \n",
+	"chown -R impala /dbcache/ \n",
+	"mkdir -p /home/ec2-user/build/tachyon/logs \n",
+	"chmod -R a+wr /home/ec2-user/build/tachyon/logs \n",
+	"mkdir -p /mnt/ramdisk/tachyonworker \n",
+	"chmod 777 tachyonworker \n",
+	"chmod -R a+rw /dbcache/ \n",
+	"/opt/aws/bin/cfn-init -v ",
+	"         --stack ", { "Ref" : "AWS::StackName" },
+	"         --resource I2gSlave ",
+	"         --configsets configs ",
+	"         --region ", { "Ref" : "AWS::Region" }, "\n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n"
 	]]}
 	}
 	},
@@ -510,28 +719,49 @@
 
         "AWS::CloudFormation::Init" : {
           "configSets" : {
-            "configs": [ "fileConfig", "serviceConfig" ]
+            "configs": [ "fileConfig", "commandConfig", "serviceConfig" ]
           },
           "fileConfig": {
 	    "files" : {
 	      "/etc/impala/core-site.xml" : {
 		"content" : { "Fn::Join" : [ "", [
 		"<?xml version=\"1.0\"?>",
-		"<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
-		"<configuration>",
-		"<property>",
-		"<name>fs.defaultFS</name>",
-		"<value>",
-		{"Ref" : "S3Bucket"},
-		"</value>",
-		"</property>",
-		"<property>",
-		"<name>fs.default.name</name>",
-		"<value>",
-		{"Ref" : "S3Bucket"},
-		"</value>",
-		"<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
-		"</property>",
+      "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
+      "<configuration>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedStart" ]},
+      "<property>",
+      "<name>fs.defaultFS</name>",
+      "<value>",
+      {"Ref" : "S3Bucket"},
+      "</value>",
+      "</property>",
+      "<property>",
+      "<name>fs.default.name</name>",
+      "<value>",
+      {"Ref" : "S3Bucket"},
+      "</value>",
+      "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+      "</property>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedEnd" ]},
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonStart" ]},
+      "<property>",
+      "<name>fs.defaultFS</name>",
+      "<value>",
+      {"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+      "</value>",
+      "</property>",
+      "<property>",
+      "<name>fs.default.name</name>",
+      "<value>",
+      {"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+      "</value>",
+      "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+      "</property>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonEnd" ]},
+      "<property>",
+      "<name>dfs.permissions</name>",
+      "<value>false</value>",
+      "</property>",
 		"<property>",
 		"<name>fs.s3n.awsAccessKeyId</name>",
 		"<value>",
@@ -584,21 +814,39 @@
 		"<?xml version=\"1.0\"?>",
       "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>",
       "<configuration>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedStart" ]},
       "<property>",
       "<name>fs.defaultFS</name>",
       "<value>",
-		{"Ref" : "S3Bucket"},
-		"</value> </property>",
-      "<property>",
-      "<name>dfs.permissions</name>",
-      "<value>false</value>",
+      {"Ref" : "S3Bucket"},
+      "</value>",
       "</property>",
       "<property>",
       "<name>fs.default.name</name>",
       "<value>",
-		{"Ref" : "S3Bucket"},
-		"</value>",
+      {"Ref" : "S3Bucket"},
+      "</value>",
       "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+      "</property>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentEmbeddedEnd" ]},
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonStart" ]},
+      "<property>",
+      "<name>fs.defaultFS</name>",
+      "<value>",
+      {"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+      "</value>",
+      "</property>",
+      "<property>",
+      "<name>fs.default.name</name>",
+      "<value>",
+      {"Fn::Join" : ["",["tachyon://",{ "Ref" : "MasterEIP" },":19998" ]]},
+      "</value>",
+      "<description>The name of the default file system.  A URI whose scheme and authority determine the FileSystem implementation.</description>",
+      "</property>",
+      { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "CommentTachyonEnd" ]},
+      "<property>",
+      "<name>dfs.permissions</name>",
+      "<value>false</value>",
       "</property>",
       "<property>",
       "<name>fs.s3n.awsAccessKeyId</name>",
@@ -606,6 +854,7 @@
 		{"Ref" : "S3AccessKeyID"},
 		"</value>",
       "</property>",
+      "<property><name>fs.s3.buffer.dir</name><value>/dbcache/tmp/s3/</value></property>",
       "<property>",
       "<name>fs.s3n.awsSecretAccessKey</name>",
       "<value>",
@@ -653,7 +902,7 @@
       "<configuration>",
       "<property>",
       "<name>javax.jdo.option.ConnectionURL</name>",
-      "<value>jdbc:mysql://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },"/metastore</value>",
+      "<value>jdbc:mysql://",{ "Ref" : "MasterEIP" },"/metastore</value>",
       "<description>the URL of the MySQL database</description>",
       "</property>",
       "<property>",
@@ -706,15 +955,15 @@
 	      },
 	      "/etc/default/impala" : {
 		  "content" : { "Fn::Join" : [ "", [
-	"IMPALA_CATALOG_SERVICE_HOST=",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },"\n",
-	"IMPALA_STATE_STORE_HOST=",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },"\n",
+	"IMPALA_CATALOG_SERVICE_HOST=",{ "Ref" : "MasterEIP" },"\n",
+	"IMPALA_STATE_STORE_HOST=",{ "Ref" : "MasterEIP" },"\n",
 	"IMPALA_STATE_STORE_PORT=24000\n",
 	"IMPALA_BACKEND_PORT=22000\n",
 	"IMPALA_LOG_DIR=/var/log/impala\n",
 
 	"IMPALA_CATALOG_ARGS=\" -log_dir=${IMPALA_LOG_DIR} \"\n",
 	"IMPALA_STATE_STORE_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -state_store_port=${IMPALA_STATE_STORE_PORT}\"\n",
-	"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/dbcache/tmp\" \n",
+	"IMPALA_SERVER_ARGS=\" -log_dir=${IMPALA_LOG_DIR} -catalog_service_host=${IMPALA_CATALOG_SERVICE_HOST} -state_store_port=${IMPALA_STATE_STORE_PORT} -use_statestore -state_store_host=${IMPALA_STATE_STORE_HOST} -be_port=${IMPALA_BACKEND_PORT} --scratch_dirs=/dbcache/tmp", { "Fn::FindInMap" : [ "CacheDependentParams",  { "Ref" : "ClusterDFSCacheType" }, "ImpalaStartupParam" ]},"\" \n",
 	"ENABLE_CORE_DUMPS=false\n",
 	"IMPALA_HOME=${IMPALA_HOME:-/usr/lib/impala}\n",
 	"export CLASSPATH=${IMPALA_HOME}/lib/tachyon-client-0.7.0-SNAPSHOT-jar-with-dependencies.jar:${IMPALA_HOME}/lib/json-simple-1.1.1.jar:${CLASSPATH}\n"
@@ -723,9 +972,100 @@
 		"mode"  : "000666",
 		"owner" : "ec2-user",
 		"group" : "ec2-user"
-		}
+		},
+	 "/home/ec2-user/build/tachyon/conf/tachyon-env.sh" : {
+		  "mode" : "000777",
+		  "owner" : "ec2-user",
+		  "group" : "ec2-user",
+		  "content" : { "Fn::Join" : ["", [
+"#!/usr/bin/env bash \n",
+" \n",
+"if [[ `uname -a` == Darwin* ]]; then \n",
+"  # Assuming Mac OS X \n",
+"  export JAVA_HOME=${JAVA_HOME:-$(/usr/libexec/java_home)} \n",
+"  export TACHYON_RAM_FOLDER=/Volumes/ramdisk \n",
+"  export TACHYON_JAVA_OPTS=\"-Djava.security.krb5.realm= -Djava.security.krb5.kdc=\" \n",
+"else \n",
+"  # Assuming Linux \n",
+"  if [ -z \"$JAVA_HOME\" ]; then \n",
+"    if [ -d /usr/lib/jvm/java-7-oracle ]; then \n",
+"      export JAVA_HOME=/usr/lib/jvm/java-7-oracle \n",
+"    else \n",
+"      # openjdk will set this \n",
+"      if [ -d /usr/lib/jvm/jre-1.7.0 ]; then \n",
+"        export JAVA_HOME=/usr/lib/jvm/jre-1.7.0 \n",
+"      fi \n",
+"    fi \n",
+"  fi \n",
+"  export TACHYON_RAM_FOLDER=/mnt/ramdisk \n",
+"fi \n",
+" \n",
+"if [ -z \"$JAVA_HOME\" ]; then \n",
+"  export JAVA_HOME=\"$(dirname $(which java))/..\" \n",
+"fi \n",
+" \n",
+"export JAVA=\"$JAVA_HOME/bin/java\" \n",
+"export TACHYON_MASTER_ADDRESS=",{ "Ref" : "MasterEIP" }," \n",
+"export TACHYON_UNDERFS_ADDRESS=",{"Ref" : "S3Bucket"}," \n",
+"export TACHYON_WORKER_MEMORY_SIZE=1GB \n",
+"export TACHYON_UNDERFS_HDFS_IMPL=org.apache.hadoop.hdfs.DistributedFileSystem \n",
+"export TACHYON_WORKER_MAX_WORKER_THREADS=2048 \n",
+"export TACHYON_MASTER_MAX_WORKER_THREADS=2048 \n",
+" \n",
+"export TACHYON_SSH_FOREGROUND=\"yes\" \n",
+"export TACHYON_WORKER_SLEEP=\"0.02\" \n",
+" \n",
+"CONF_DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\" \n",
+" \n",
+"export TACHYON_JAVA_OPTS+=\" \n",
+"  -Dlog4j.configuration=file:$CONF_DIR/log4j.properties \n",
+"  -Dtachyon.debug=false \n",
+"  -Dtachyon.worker.hierarchystore.level.max=1 \n",
+"  -Dtachyon.worker.hierarchystore.level0.alias=MEM \n",
+"  -Dtachyon.worker.hierarchystore.level0.dirs.path=$TACHYON_RAM_FOLDER \n",
+"  -Dtachyon.worker.hierarchystore.level0.dirs.quota=$TACHYON_WORKER_MEMORY_SIZE \n",
+"  -Dtachyon.underfs.address=$TACHYON_UNDERFS_ADDRESS \n",
+"  -Dtachyon.underfs.hdfs.impl=$TACHYON_UNDERFS_HDFS_IMPL \n",
+"  -Dtachyon.data.folder=/dbcache/tmp/tachyon/data \n",
+"  -Dtachyon.worker.max.worker.threads=$TACHYON_WORKER_MAX_WORKER_THREADS \n",
+"  -Dtachyon.workers.folder=/dbcache/tmp/tachyon/workers \n",
+"  -Dtachyon.worker.memory.size=$TACHYON_WORKER_MEMORY_SIZE \n",
+"  -Dtachyon.worker.data.folder=/tachyonworker/ \n",
+"  -Dtachyon.master.max.worker.threads=$TACHYON_MASTER_MAX_WORKER_THREADS \n",
+"  -Dtachyon.master.worker.timeout.ms=60000 \n",
+"  -Dtachyon.master.hostname=$TACHYON_MASTER_ADDRESS \n",
+"  -Dtachyon.master.journal.folder=$TACHYON_HOME/journal/ \n",
+"  -Dorg.apache.jasper.compiler.disablejsr199=true \n",
+"  -Djava.net.preferIPv4Stack=true \n",
+"  -Dhadoop.home.dir=/usr/lib/hadoop-0.20-mapreduce/ \n",
+"  -Dfs.s3n.awsAccessKeyId=",{"Ref" : "S3AccessKeyID"}," \n",
+"  -Dfs.s3n.awsSecretAccessKey=",{"Ref" : "S3AccessSecretKey"}," \n",
+"\" \n",
+" \n",
+"# Master specific parameters. Default to TACHYON_JAVA_OPTS. \n",
+"export TACHYON_MASTER_JAVA_OPTS=\"$TACHYON_JAVA_OPTS\" \n",
+" \n",
+"# Worker specific parameters that will be shared to all workers. Default to TACHYON_JAVA_OPTS. \n",
+"export TACHYON_WORKER_JAVA_OPTS=\"$TACHYON_JAVA_OPTS\" \n"
+		  ] ]
+		  }
 	      }
-	    },
+	    }
+	  },
+	  "commandConfig" : {
+	    "commands" : {
+	      "formatTachyon" : {
+		"command" : "/home/ec2-user/build/tachyon/bin/tachyon format|tee -a /home/ec2-user/build/tachyon/logs/startup.log",
+		"cwd" : "/home/ec2-user/build/tachyon/",
+		"ignoreErrors" : "true"
+	      },
+	      "startTachyonWorker" : {
+		"command" : "/home/ec2-user/build/tachyon/bin/tachyon-start.sh worker Mount|tee -a /home/ec2-user/build/tachyon/logs/startup.log",
+		"cwd" : "/home/ec2-user/build/tachyon/",
+		"ignoreErrors" : "true"
+	      }
+	    }
+	  },
 	  "serviceConfig":{
 	    "services" : {
 	      "sysvinit" : {
@@ -743,7 +1083,7 @@
 	  }
 	}
       },
-      "I2GlaunchSlaves" : {
+    "I2GlaunchSlaves" : {
 	"Type" : "AWS::AutoScaling::LaunchConfiguration",
 	"Condition" : "ShouldLaunchMoreSlaves",
 	"Properties" : {
@@ -766,27 +1106,32 @@
 	"#cloud-boothook\n",
 	"#!/bin/bash\n",
 	"yum update -y aws-cfn-bootstrap\n",
-	"# Install the files and packages from the metadata\n",
-	"# --resource set to match slave configuration!!!\n",
-	"/opt/aws/bin/cfn-init -v ",
-	"         --stack ", { "Ref" : "AWS::StackName" },
-	"         --resource I2gSlave ",
-	"         --configsets configs ",
-	"         --region ", { "Ref" : "AWS::Region" }, "\n",
-	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
-	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n",
 	"rm -rf /var/cache/impalatogo \n",
 	"mkdir -p /dbcache/cache \n",
 	"ln -s /dbcache/cache /var/cache/impalatogo \n",
 	"chown -R impala /var/cache/impalatogo \n",
 	"chown -R impala /dbcache/cache \n",
 	"mkdir -p /dbcache/tmp \n",
-	"chown -R impala /dbcache/tmp \n"
+	"mkdir -p /dbcache/tmp-tachyon/workers \n",
+	"mkdir -p /dbcache/tmp-tachyon/data \n",
+	"chown -R impala /dbcache/ \n",
+	"mkdir -p /home/ec2-user/build/tachyon/logs \n",
+	"chmod -R a+wr /home/ec2-user/build/tachyon/logs \n",
+	"mkdir -p /mnt/ramdisk/tachyonworker \n",
+	"chmod 777 tachyonworker \n",
+	"chmod -R a+rw /dbcache/ \n",
+	"/opt/aws/bin/cfn-init -v ",
+	"         --stack ", { "Ref" : "AWS::StackName" },
+	"         --resource I2gSlave ",
+	"         --configsets configs ",
+	"         --region ", { "Ref" : "AWS::Region" }, "\n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/hive/conf/ \n",
+	"ln -s /etc/impala/conf/hive-site.xml /etc/alternatives/hive-conf/ \n"
 	]]}
 	}
 	}
       },
-	"I2GSlavesScalingGroup": {
+    "I2GSlavesScalingGroup": {
 	  "Type" : "AWS::AutoScaling::AutoScalingGroup",
 	  "Condition" : "ShouldLaunchMoreSlaves",
 	  "Properties" : {
@@ -811,60 +1156,28 @@
 	      }
 	    ]
 	  }
-	},
-	"I2GSecurityGroupMaster" : {
-	"Type" : "AWS::EC2::SecurityGroup",
-	"Properties" : {
-	"GroupDescription" : "SSH access",
-	"SecurityGroupIngress" : [
-	  { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "15000", "ToPort" : "15002", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "19998", "ToPort" : "19999", "CidrIp" : "0.0.0.0/0"},
-          { "IpProtocol" : "tcp", "FromPort" : "29998", "ToPort" : "29999", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "21050", "ToPort" : "21050", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "22000", "ToPort" : "22000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "23000", "ToPort" : "23000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "24000", "ToPort" : "24000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "25000", "ToPort" : "25000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "25010", "ToPort" : "25010", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "25020", "ToPort" : "25020", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "26000", "ToPort" : "26000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "28000", "ToPort" : "28000", "CidrIp" : "0.0.0.0/0"}
-	  ]
-	 }
-	},
-	"I2GSecurityGroupSlave" : {
-	  "Type" : "AWS::EC2::SecurityGroup",
-	  "Condition" : "ShouldCreateFirstSlave",
-	  "Properties" : {
-	  "GroupDescription" : "SSH access",
-	  "SecurityGroupIngress" : [
-	  { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "15000", "ToPort" : "15002", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "21000", "ToPort" : "21000", "CidrIp" : "0.0.0.0/0"},
-          { "IpProtocol" : "tcp", "FromPort" : "19998", "ToPort" : "19999", "CidrIp" : "0.0.0.0/0"},
-          { "IpProtocol" : "tcp", "FromPort" : "29998", "ToPort" : "29999", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "21050", "ToPort" : "21050", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "22000", "ToPort" : "22000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "23000", "ToPort" : "23000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "25000", "ToPort" : "25000", "CidrIp" : "0.0.0.0/0"}
-	  ]
 	}
-      }
-    },
+  },
   "Outputs" : {
     "JDBC" : {
-      "Value" : {"Fn::Join" : ["", [ "jdbc:impala://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },":21050"] ] },
+      "Value" : { "Fn::Join" : ["", [ "jdbc:impala://",{ "Ref" : "MasterEIP" },":21050"] ] },
       "Description" : "JDBC Connection String for Impala2go Cluster"
     },
     "ClusterStatus" : {
-      "Value" : {"Fn::Join" : ["", [ "http://",{"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },":25000"] ] },
+      "Value" : {"Fn::Join" : ["", [ "http://",{ "Ref" : "MasterEIP" },":25000"] ] },
       "Description" : "ImpalaToGo Cluster status page"
     },
-    "MasterDNS" : {
-      "Value" : {"Fn::GetAtt" : [ "I2gMaster", "PublicDnsName"] },
-      "Description" : "DNS of master node"
+    "MasterHost" : {
+      "Value" : { "Ref" : "MasterEIP" },
+      "Description" : "IP of master node"
+    },
+     "TachyonUI" : {
+      "Value" : { "Fn::Join" : ["", [ "http://",{ "Ref" : "MasterEIP" },":19999"] ] },
+      "Description" : "Address of Tachyon UI. May be unavailable if not configured in parameters"
+    },
+     "sshCommand" : {
+      "Value" : { "Fn::Join" : ["", [ "ssh -i ~/.ssh/",{ "Ref":"KeyName"},".pem"," ec2-user@",{ "Ref" : "MasterEIP" }] ] },
+      "Description" : "Address of Tachyon UI. May be unavailable if not configured in parameters"
     }
   }
 
