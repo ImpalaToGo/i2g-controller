@@ -96,7 +96,7 @@
       "cc2.8xlarge" : { "Arch" : "HVM64"  }
     },
     "AWSRegionArch2AMI" : {
-      "us-east-1"        : {"PV64" : "ami-a6686bce", "HVM64" : "ami-a6686bce", "HVMG2" : "ami-a6686bce"}
+      "us-east-1"        : {"PV64" : "ami-30101358", "HVM64" : "ami-30101358", "HVMG2" : "ami-30101358"}
     },
     "ClusterCapacityToNumberOfSlaves" : {
       "1" : { "Num" : "0"},
