@@ -30,7 +30,19 @@
       "Description" : "Instance type to use for the cluster.",
       "Type" : "String",
       "Default" : "m3.large",
-      "AllowedValues" : [ "c3.large", "m3.large", "m3.xlarge", "m3.2xlarge"],
+      "AllowedValues" : [
+          "c3.large",
+          "m3.large",
+          "m3.xlarge",
+          "m3.2xlarge",
+          "i2.2xlarge",
+          "i2.4xlarge",
+          "r3.8xlarge",
+          "r3.4xlarge",
+          "c3.8xlarge",
+          "d2.4xlarge",
+          "d2.8xlarge"
+          ],
       "ConstraintDescription" : "Tested instance types."
     },
     "S3Bucket" : {
@@ -223,6 +235,18 @@
 	  {
 	    "DeviceName"  : "/dev/sdc",
 	    "VirtualName" : "ephemeral1"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdd",
+	    "VirtualName" : "ephemeral2"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sde",
+	    "VirtualName" : "ephemeral3"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdf",
+	    "VirtualName" : "ephemeral4"
 	  }
 	],
 	"Tags" : [
@@ -667,13 +691,25 @@
 			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "I2gInstanceType" }, "Arch" ] } ] },
 	"SecurityGroups" : [{ "Ref" : "I2GSecurityGroupSlave" }],
 	"BlockDeviceMappings" : [
-	  {
+{
 	    "DeviceName"  : "/dev/sdb",
 	    "VirtualName" : "ephemeral0"
 	  },
 	  {
 	    "DeviceName"  : "/dev/sdc",
 	    "VirtualName" : "ephemeral1"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdd",
+	    "VirtualName" : "ephemeral2"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sde",
+	    "VirtualName" : "ephemeral3"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdf",
+	    "VirtualName" : "ephemeral4"
 	  }
 	],
 	"Tags" : [
@@ -1088,14 +1124,26 @@
 	"Condition" : "ShouldLaunchMoreSlaves",
 	"Properties" : {
 	  "BlockDeviceMappings" : [
-	    {
-	      "DeviceName"  : "/dev/sdb",
-	      "VirtualName" : "ephemeral0"
-	    },
-	    {
-	      "DeviceName"  : "/dev/sdc",
-	      "VirtualName" : "ephemeral1"
-	    }
+{
+	    "DeviceName"  : "/dev/sdb",
+	    "VirtualName" : "ephemeral0"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdc",
+	    "VirtualName" : "ephemeral1"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdd",
+	    "VirtualName" : "ephemeral2"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sde",
+	    "VirtualName" : "ephemeral3"
+	  },
+	  {
+	    "DeviceName"  : "/dev/sdf",
+	    "VirtualName" : "ephemeral4"
+	  }
 	  ],
 	  "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
 			  { "Fn::FindInMap" : [ "AWSInstanceType2Arch",{ "Ref" : "I2gInstanceType" }, "Arch" ] } ] },
