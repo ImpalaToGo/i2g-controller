@@ -1,6 +1,6 @@
 #!/bin/bash
 #set RY_RUN just to run nothing on amazon ocasionally
-DRY_RUN="--dry-run"
+#DRY_RUN="--dry-run"
 #check if we are root (for example running with sudo)
 ROOT=$(whoami)
 
@@ -10,13 +10,14 @@ then
 	echo please run "sudo $0"
 	exit 1
 fi
+set -x
 . folders.config
 
 function prepare_folder(){
 	local FOLDER=$1
 	mkdir -p $FOLDER
-	chmod -R o+w $FOLDER
-	chmod -R o+r $FOLDER
+	chmod -R o+rw $FOLDER
+	chmod -R g+rw $FOLDER
 	chmod o+x $FOLDER
 }
 prepare_folder $LOG_DIR
