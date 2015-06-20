@@ -108,7 +108,7 @@
       "cc2.8xlarge" : { "Arch" : "HVM64"  }
     },
     "AWSRegionArch2AMI" : {
-      "us-east-1"        : {"PV64" : "ami-0516fc6e", "HVM64" : "ami-0516fc6e", "HVMG2" : "ami-0516fc6e"}
+      "us-east-1"        : {"PV64" : "ami-e3d42b88", "HVM64" : "ami-e3d42b88", "HVMG2" : "ami-e3d42b88"}
     },
     "ClusterCapacityToNumberOfSlaves" : {
       "1" : { "Num" : "0"},
@@ -198,7 +198,8 @@
 	  { "IpProtocol" : "tcp", "FromPort" : "25020", "ToPort" : "25020", "CidrIp" : "0.0.0.0/0"},
 	  { "IpProtocol" : "tcp", "FromPort" : "26000", "ToPort" : "26000", "CidrIp" : "0.0.0.0/0"},
 	  { "IpProtocol" : "tcp", "FromPort" : "28000", "ToPort" : "28000", "CidrIp" : "0.0.0.0/0"},
-	  { "IpProtocol" : "tcp", "FromPort" : "30000", "ToPort" : "30000", "CidrIp" : "0.0.0.0/0"}
+	  { "IpProtocol" : "tcp", "FromPort" : "30000", "ToPort" : "30000", "CidrIp" : "0.0.0.0/0"},
+          { "IpProtocol" : "tcp", "FromPort" : "3306", "ToPort" : "3306", "CidrIp" : "0.0.0.0/0"}
 	  ]
 	 }
 	},
