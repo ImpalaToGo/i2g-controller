@@ -83,7 +83,7 @@ then
         format_device $DEVICE_PATH
         mount -t auto $DEVICE_PATH $MOUNTPOINT
         #Create a record in FSTAB and delete obsolete ephemeral records
-        sed -i s#".*ephemeral.*"#""# s#".*dbcache.*"#""# s#".*$MOUNTPOINT.*"#""# /etc/fstab
+        sed -i s#".*ephemeral.*"#""# s#".*dbcache.*"#""# s#".*$MOUNTPOINT.*"#""# s#".*xvd[b-z].*"#""# /etc/fstab
 	echo $DEVICE_PATH $MOUNTPOINT $FSTYPE defaults 0 0 >>/etc/fstab
         cat /etc/fstab
 fi
