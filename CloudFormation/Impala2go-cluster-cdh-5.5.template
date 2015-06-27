@@ -229,9 +229,9 @@
 		},
 		"AWSRegionArch2AMI":{
 			"us-east-1":{
-				"PV64":"ami-b702fbdc",
-				"HVM64":"ami-b702fbdc",
-				"HVMG2":"ami-b702fbdc"
+				"PV64":"ami-25bd794e",
+				"HVM64":"ami-25bd794e",
+				"HVMG2":"ami-25bd794e"
 			}
 		},
 		"ClusterCapacityToNumberOfSlaves":{
@@ -1022,6 +1022,11 @@
 											"<name>dfs.datanode.hdfs-blocks-metadata.enabled</name>",
 											"<value>true</value>",
 											"</property>",
+											"<property> <name>fs.s3n.multipart.uploads.enabled</name> <value>true</value>",
+											"<description>Setting this property to true enables multiple uploads to native S3 filesystem. When uploading a file, it is split into blocks if the size is larger than fs.s3n.multipart.uploads.block.size. </description></property>",
+											"<property> <name>fs.s3n.multipart.uploads.split.size</name> <value>524288000</value> <description> </description> </property>",
+											"<property> <name>fs.s3n.multipart.uploads.block.size</name> <value>67108864</value> <description>The block size for multipart uploads to native S3 filesystem. Default size is 64MB. </description> </property>",
+											"<property> <name>fs.s3n.multipart.copy.block.size</name> <value>5368709120</value> <description>The block size for multipart copy in native S3 filesystem. Default size is 5GB. </description> </property>",
 											"</configuration>"
 										]
 									]
@@ -1225,6 +1230,25 @@
 										]
 									]
 								}
+							},
+							"/etc/hadoop/conf/jets3t.properties":{
+								"mode":"000666",
+								"owner":"ec2-user",
+								"group":"ec2-user",
+								"content":{
+									"Fn::Join":[
+										"",
+										[
+											"storage-service.internal-error-retry-max=5",
+											"storage-service.disable-live-md5=false\n",
+											"threaded-service.max-thread-count=1\n",
+											"threaded-service.admin-max-thread-count=1\n",
+											"s3service.max-thread-count=20\n",
+											"s3service.admin-max-thread-count=20\n"
+										]
+									]
+								}
+							}
 						}
 					},
 					"commandConfig":{
@@ -1728,6 +1752,11 @@
 											"<name>dfs.datanode.hdfs-blocks-metadata.enabled</name>",
 											"<value>true</value>",
 											"</property>",
+											"<property> <name>fs.s3n.multipart.uploads.enabled</name> <value>true</value>",
+											"<description>Setting this property to true enables multiple uploads to native S3 filesystem. When uploading a file, it is split into blocks if the size is larger than fs.s3n.multipart.uploads.block.size. </description></property>",
+											"<property> <name>fs.s3n.multipart.uploads.split.size</name> <value>524288000</value> <description> </description> </property>",
+											"<property> <name>fs.s3n.multipart.uploads.block.size</name> <value>67108864</value> <description>The block size for multipart uploads to native S3 filesystem. Default size is 64MB. </description> </property>",
+											"<property> <name>fs.s3n.multipart.copy.block.size</name> <value>5368709120</value> <description>The block size for multipart copy in native S3 filesystem. Default size is 5GB. </description> </property>",
 											"</configuration>"
 										]
 									]
@@ -1943,6 +1972,24 @@
 										]
 									]
 								}
+							},
+							"/etc/hadoop/conf/jets3t.properties":{
+								"mode":"000666",
+								"owner":"ec2-user",
+								"group":"ec2-user",
+								"content":{
+									"Fn::Join":[
+										"",
+										[
+											"storage-service.internal-error-retry-max=5",
+											"storage-service.disable-live-md5=false\n",
+											"threaded-service.max-thread-count=1\n",
+											"threaded-service.admin-max-thread-count=1\n",
+											"s3service.max-thread-count=20\n",
+											"s3service.admin-max-thread-count=20\n"
+										]
+									]
+								}
 							}
 						}
 					},
@@ -1977,7 +2024,10 @@
 									],
 									"files":[
 										"/etc/default/impala"
-									]
+									],
+									"files":[
+										"/etc/hadoop/conf/jets3t.properties"
+										]
 								}
 							}
 						}
