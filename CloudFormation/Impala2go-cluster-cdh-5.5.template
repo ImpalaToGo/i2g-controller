@@ -2240,7 +2240,7 @@
 							"Ref":"KeyName"
 						},
 						".pem",
-						" ec2-user@",
+						" centos@",
 						{
 							"Ref":"MasterEIP"
 						}
