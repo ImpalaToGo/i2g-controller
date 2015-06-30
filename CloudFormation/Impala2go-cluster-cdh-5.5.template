@@ -229,9 +229,9 @@
 },
 "AWSRegionArch2AMI":{
 "us-east-1":{
-"PV64":"ami-25bd794e",
-"HVM64":"ami-25bd794e",
-"HVMG2":"ami-25bd794e"
+"PV64":"ami-c35096a8",
+"HVM64":"ami-c35096a8",
+"HVMG2":"ami-c35096a8"
 }
 },
 "ClusterCapacityToNumberOfSlaves":{
