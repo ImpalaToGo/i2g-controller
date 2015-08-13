@@ -45,7 +45,10 @@
 "r3.4xlarge",
 "c3.8xlarge",
 "d2.4xlarge",
-"d2.8xlarge"
+"d2.8xlarge",
+"c3.4xlarge",
+"c3.2xlarge",
+"c3.xlarge"
 ],
 "ConstraintDescription":"Tested instance types."
 },
