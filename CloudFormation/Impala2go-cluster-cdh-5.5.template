@@ -232,6 +232,16 @@
 "PV64":"ami-c35096a8",
 "HVM64":"ami-c35096a8",
 "HVMG2":"ami-c35096a8"
+},
+"us-west-2":{
+"PV64":"ami-dba8a2eb",
+"HVM64":"ami-dba8a2eb",
+"HVMG2":"ami-dba8a2eb"
+},
+"us-west-1":{
+"PV64":"ami-5f34ca1b",
+"HVM64":"ami-5f34ca1b",
+"HVMG2":"ami-5f34ca1b"
 }
 },
 "ClusterCapacityToNumberOfSlaves":{
