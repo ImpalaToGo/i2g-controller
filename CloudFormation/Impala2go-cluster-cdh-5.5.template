@@ -39,6 +39,7 @@
 "m3.large",
 "m3.xlarge",
 "m3.2xlarge",
+"i2.xlarge",
 "i2.2xlarge",
 "i2.4xlarge",
 "r3.8xlarge",
