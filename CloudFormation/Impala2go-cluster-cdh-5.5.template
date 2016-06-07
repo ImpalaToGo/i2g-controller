@@ -43,6 +43,7 @@
 "i2.2xlarge",
 "i2.4xlarge",
 "r3.8xlarge",
+"r3.2xlarge",
 "r3.4xlarge",
 "c3.8xlarge",
 "d2.4xlarge",
@@ -232,21 +233,16 @@
 }
 },
 "AWSRegionArch2AMI":{
-"us-east-1":{
-"PV64":"ami-c35096a8",
-"HVM64":"ami-c35096a8",
-"HVMG2":"ami-c35096a8"
-},
-"us-west-2":{
-"PV64":"ami-dba8a2eb",
-"HVM64":"ami-dba8a2eb",
-"HVMG2":"ami-dba8a2eb"
-},
-"us-west-1":{
-"PV64":"ami-5f34ca1b",
-"HVM64":"ami-5f34ca1b",
-"HVMG2":"ami-5f34ca1b"
-}
+"eu-west-1":{"HVM64":"ami-a5cf5cd6"},
+"ap-southeast-1":{"HVM64":"ami-0867b66b"},
+"ap-southeast-2":{"HVM64":"ami-4b082628"},
+"eu-central-1":{"HVM64":"ami-887d92e7"},
+"ap-northeast-2":{"HVM64":"ami-98c70cf6"},
+"ap-northeast-1":{"HVM64":"ami-8326cae2"},
+"us-east-1":{"HVM64":"ami-275aa84a"},
+"sa-east-1":{"HVM64":"ami-b98c07d5"},
+"us-west-1":{"HVM64":"ami-98d9a2f8"},
+"us-west-2":{"HVM64":"ami-bc5fa6dc"}
 },
 "ClusterCapacityToNumberOfSlaves":{
 "1":{
@@ -1254,7 +1250,7 @@
 "Fn::Join":[
 "",
 [
-"storage-service.internal-error-retry-max=5",
+"storage-service.internal-error-retry-max=5\n",
 "storage-service.disable-live-md5=false\n",
 "threaded-service.max-thread-count=1\n",
 "threaded-service.admin-max-thread-count=1\n",
@@ -1997,7 +1993,7 @@
 "Fn::Join":[
 "",
 [
-"storage-service.internal-error-retry-max=5",
+"storage-service.internal-error-retry-max=5\n",
 "storage-service.disable-live-md5=false\n",
 "threaded-service.max-thread-count=1\n",
 "threaded-service.admin-max-thread-count=1\n",
@@ -2154,7 +2150,7 @@
 "Properties":{
 "AvailabilityZones":[
 "us-east-1b",
-"us-east-1c",
+"us-east-1a",
 "us-east-1d",
 "us-east-1e"
 ],
@@ -2254,7 +2250,7 @@
 "Ref":"KeyName"
 },
 ".pem",
-" centos@",
+" ec2-user@",
 {
 "Ref":"MasterEIP"
 }
