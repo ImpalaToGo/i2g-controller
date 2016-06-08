@@ -1171,7 +1171,7 @@
 "\" \n",
 "ENABLE_CORE_DUMPS=false\n",
 "IMPALA_HOME=${IMPALA_HOME:-/usr/lib/impala}\n",
-"export CLASSPATH=${IMPALA_HOME}/lib/tachyon-client-0.7.0-SNAPSHOT-jar-with-dependencies.jar:${IMPALA_HOME}/lib/json-simple-1.1.1.jar:${CLASSPATH}\n"
+"export CLASSPATH=/usr/lib/impala/lib/jline-2.12.jar:${IMPALA_HOME}/lib/tachyon-client-0.7.0-SNAPSHOT-jar-with-dependencies.jar:${IMPALA_HOME}/lib/json-simple-1.1.1.jar:${CLASSPATH}\n"
 ]
 ]
 },
@@ -1951,7 +1951,7 @@
 "\" \n",
 "ENABLE_CORE_DUMPS=false\n",
 "IMPALA_HOME=${IMPALA_HOME:-/usr/lib/impala}\n",
-"export CLASSPATH=${IMPALA_HOME}/lib/tachyon-client-0.7.0-SNAPSHOT-jar-with-dependencies.jar:${IMPALA_HOME}/lib/json-simple-1.1.1.jar:${CLASSPATH}\n"
+"export CLASSPATH=/usr/lib/impala/lib/jline-2.12.jar:${IMPALA_HOME}/lib/tachyon-client-0.7.0-SNAPSHOT-jar-with-dependencies.jar:${IMPALA_HOME}/lib/json-simple-1.1.1.jar:${CLASSPATH}\n"
 ]
 ]
 },
